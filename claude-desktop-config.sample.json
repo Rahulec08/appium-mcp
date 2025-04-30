@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mobile-automation": {
+      "command": "node",
+      "args": [
+        "/ABSOLUTE/PATH/TO/mcp-appium/dist/index.js"
+      ]
+    }
+  }
+}

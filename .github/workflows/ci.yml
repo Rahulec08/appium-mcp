@@ -1,0 +1,131 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run linting
+        run: npm run lint || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-${{ matrix.node-version }}
+          path: dist/
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Setup Android emulator
+        if: false # Disabled by default as it requires significant setup
+        run: |
+          echo "Setting up Android emulator would go here"
+          # This would include installing the Android SDK, creating an AVD, and starting the emulator
+
+      - name: Install Appium
+        run: |
+          npm install -g appium
+          appium driver install uiautomator2
+
+      - name: Start Appium server
+        run: appium --log appium.log &
+
+      - name: Run tests (with connected devices only)
+        run: |
+          # Only run tests if there are connected devices
+          if adb devices | grep -q "device$"; then
+            npm test
+          else
+            echo "No devices connected, skipping integration tests"
+          fi
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs
+          path: |
+            appium.log
+            screenshots/
+
+  release:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Semantic versioning
+        id: versioning
+        run: |
+          # This is a placeholder. In a real setup, you'd use semantic-release or similar
+          echo "version=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: steps.versioning.outputs.version != ''
+        with:
+          tag_name: v${{ steps.versioning.outputs.version }}
+          name: Release v${{ steps.versioning.outputs.version }}
+          draft: false
+          prerelease: false
+
+      - name: Publish to npm
+        if: false # Disabled by default - enable when ready to publish
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,36 @@
+# Node.js related
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# TypeScript compiled output
+dist/
+build/
+*.tsbuildinfo
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+.DS_Store
+
+# Appium log files
+appium.log
+
+# Screenshots directory
+screenshots/
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Logs
+logs/
+*.log
+
+# Test artifacts
+coverage/

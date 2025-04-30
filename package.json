@@ -1,0 +1,50 @@
+{
+  "name": "mcp-appium",
+  "version": "1.0.0",
+  "description": "MCP Server for Appium mobile automation",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "mcp-appium": "./dist/launcher.js",
+    "mcp-appium-cli": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "ts-node examples/appium-test.ts",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rimraf dist",
+    "prepare": "npm run build",
+    "launch": "node dist/launcher.js",
+    "cli": "node dist/cli.js"
+  },
+  "keywords": [
+    "mcp",
+    "appium",
+    "mobile",
+    "automation",
+    "testing"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "@types/xml2js": "^0.4.14",
+    "appium": "^2.4.1",
+    "appium-uiautomator2-driver": "^2.34.1",
+    "appium-xcuitest-driver": "^5.11.0",
+    "wd": "^1.14.0",
+    "webdriverio": "^8.29.0",
+    "xml2js": "^0.6.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.56.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
