@@ -34,10 +34,16 @@
     "appium": "^2.4.1",
     "appium-uiautomator2-driver": "^2.34.1",
     "appium-xcuitest-driver": "^5.11.0",
+    "appium-webdriveragent": "^9.6.1",
     "wd": "^1.14.0",
     "webdriverio": "^8.29.0",
     "xml2js": "^0.6.2",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "applesign": "5.0.0",
+    "archiver": "^5.3.1",
+    "ios-mobileprovision-finder": "1.2.1",
+    "rimraf": "^6.0.1",
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",

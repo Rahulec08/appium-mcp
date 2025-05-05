@@ -3,6 +3,15 @@ import { z } from "zod";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { parseStringPromise } from "xml2js";
+import { AppiumHelper } from "../lib/appium/appiumHelper.js";
+
+// External reference to the appium helper instance
+let appiumHelper: AppiumHelper | null = null;
+
+// Set the appium helper instance
+export function setAppiumHelperForInspector(helper: AppiumHelper) {
+  appiumHelper = helper;
+}
 
 /**
  * Register UI inspector tools with the MCP server
@@ -224,6 +233,462 @@ export function registerInspectorTools(server: McpServer) {
             {
               type: "text",
               text: `Error generating test script: ${error.message}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: Inspect element and perform action
+  server.tool(
+    "inspect-and-act",
+    "Inspect UI to identify element locators and then perform an action",
+    {
+      action: z
+        .enum(["tap", "sendKeys", "longPress", "clear"])
+        .describe("Action to perform on the element"),
+      elementIdentifier: z
+        .string()
+        .optional()
+        .describe(
+          "Text, partial resource-id, or other identifier to search for"
+        ),
+      text: z
+        .string()
+        .optional()
+        .describe("Text to input if action is sendKeys"),
+      longPressMs: z
+        .number()
+        .optional()
+        .describe("Duration in ms if action is longPress"),
+      timeoutMs: z
+        .number()
+        .optional()
+        .describe("Timeout in milliseconds (default: 10000)"),
+      strategy: z
+        .string()
+        .optional()
+        .describe(
+          "Initial strategy to try if provided: id, accessibility id, xpath"
+        ),
+      refreshSource: z
+        .boolean()
+        .optional()
+        .describe("Whether to refresh page source before inspection"),
+      saveLocators: z
+        .boolean()
+        .optional()
+        .describe("Whether to save found locators for future reference"),
+    },
+    async ({
+      action,
+      elementIdentifier,
+      text,
+      longPressMs,
+      timeoutMs,
+      strategy,
+      refreshSource,
+      saveLocators,
+    }) => {
+      try {
+        if (!appiumHelper) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "No active Appium session. Initialize one first with initialize-appium.",
+              },
+            ],
+          };
+        }
+
+        const timeout = timeoutMs || 10000;
+
+        // Step 1: Get fresh page source if requested
+        console.log(`Getting page source (refresh: ${refreshSource})`);
+        const pageSource = await appiumHelper.getPageSource(
+          refreshSource || false
+        );
+
+        // Step 2: Try to find element locators
+        const locators = await findElementLocators(
+          pageSource,
+          elementIdentifier
+        );
+
+        if (locators.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Could not find any elements matching "${elementIdentifier}" in the current UI.`,
+              },
+            ],
+          };
+        }
+
+        // Step 3: Save locators if requested
+        if (saveLocators) {
+          // Create a locators directory if it doesn't exist
+          const locatorsDir = path.join(process.cwd(), "locators");
+          await fs.mkdir(locatorsDir, { recursive: true });
+
+          // Save locators to a file
+          const filename = `locators_${new Date()
+            .toISOString()
+            .replace(/[:.]/g, "-")}.json`;
+          const filePath = path.join(locatorsDir, filename);
+          await fs.writeFile(
+            filePath,
+            JSON.stringify(locators, null, 2),
+            "utf-8"
+          );
+          console.log(`Saved locators to ${filePath}`);
+        }
+
+        // Step 4: Use the best locator to perform the action
+        // Try locators in this order: resource-id, accessibility-id, xpath with text
+        let actionPerformed = false;
+        let usedLocator = null;
+        let error = null;
+
+        // If a specific strategy was provided, try that first
+        if (strategy) {
+          try {
+            if (strategy === "id" && locators.resourceId) {
+              console.log(
+                `Trying with provided strategy: id=${locators.resourceId}`
+              );
+              await performAction(
+                action,
+                locators.resourceId,
+                "id",
+                text,
+                longPressMs
+              );
+              actionPerformed = true;
+              usedLocator = { strategy: "id", value: locators.resourceId };
+            } else if (
+              strategy === "accessibility id" &&
+              locators.accessibilityId
+            ) {
+              console.log(
+                `Trying with provided strategy: ~${locators.accessibilityId}`
+              );
+              await performAction(
+                action,
+                locators.accessibilityId,
+                "accessibility id",
+                text,
+                longPressMs
+              );
+              actionPerformed = true;
+              usedLocator = {
+                strategy: "accessibility id",
+                value: locators.accessibilityId,
+              };
+            } else if (strategy === "xpath" && locators.xpath) {
+              console.log(
+                `Trying with provided strategy: xpath=${locators.xpath}`
+              );
+              await performAction(
+                action,
+                locators.xpath,
+                "xpath",
+                text,
+                longPressMs
+              );
+              actionPerformed = true;
+              usedLocator = { strategy: "xpath", value: locators.xpath };
+            }
+          } catch (err: unknown) {
+            console.log(
+              `Strategy ${strategy} failed: ${
+                err instanceof Error ? err.message : String(err)
+              }`
+            );
+            error = err instanceof Error ? err : new Error(String(err));
+          }
+        }
+
+        // If action not performed yet, try other strategies in order
+        if (!actionPerformed && locators.resourceId) {
+          try {
+            console.log(`Trying with resourceId: ${locators.resourceId}`);
+            await performAction(
+              action,
+              locators.resourceId,
+              "id",
+              text,
+              longPressMs
+            );
+            actionPerformed = true;
+            usedLocator = { strategy: "id", value: locators.resourceId };
+          } catch (err: unknown) {
+            const errorMessage =
+              err instanceof Error ? err.message : String(err);
+            console.log(
+              `Resource ID strategy failed: ${
+                err instanceof Error ? err.message : String(err)
+              }`
+            );
+            error = err instanceof Error ? err : new Error(String(err));
+          }
+        }
+
+        if (!actionPerformed && locators.accessibilityId) {
+          try {
+            console.log(
+              `Trying with accessibilityId: ${locators.accessibilityId}`
+            );
+            await performAction(
+              action,
+              locators.accessibilityId,
+              "accessibility id",
+              text,
+              longPressMs
+            );
+            actionPerformed = true;
+            usedLocator = {
+              strategy: "accessibility id",
+              value: locators.accessibilityId,
+            };
+          } catch (err: unknown) {
+            const errorMessage =
+              err instanceof Error ? err.message : String(err);
+            console.log(
+              `Accessibility ID strategy failed: ${
+                err instanceof Error ? err.message : String(err)
+              }`
+            );
+            error = err instanceof Error ? err : new Error(String(err));
+          }
+        }
+
+        if (!actionPerformed && locators.xpath) {
+          try {
+            console.log(`Trying with XPath: ${locators.xpath}`);
+            await performAction(
+              action,
+              locators.xpath,
+              "xpath",
+              text,
+              longPressMs
+            );
+            actionPerformed = true;
+            usedLocator = { strategy: "xpath", value: locators.xpath };
+          } catch (err: unknown) {
+            const errorMessage =
+              err instanceof Error ? err.message : String(err);
+            console.log(
+              `XPath strategy failed: ${
+                err instanceof Error ? err.message : String(err)
+              }`
+            );
+            error = err instanceof Error ? err : new Error(String(err));
+          }
+        }
+
+        if (!actionPerformed && locators.uiAutomator) {
+          try {
+            console.log(`Trying with UIAutomator: ${locators.uiAutomator}`);
+            await performAction(
+              action,
+              locators.uiAutomator,
+              "android uiautomator",
+              text,
+              longPressMs
+            );
+            actionPerformed = true;
+            usedLocator = {
+              strategy: "android uiautomator",
+              value: locators.uiAutomator,
+            };
+          } catch (err: unknown) {
+            const errorMessage =
+              err instanceof Error ? err.message : String(err);
+            console.log(
+              `UIAutomator strategy failed: ${
+                err instanceof Error ? err.message : String(err)
+              }`
+            );
+            error = err instanceof Error ? err : new Error(String(err));
+          }
+        }
+
+        // Return the result
+        if (actionPerformed && usedLocator) {
+          const actionText =
+            action === "sendKeys" ? `${action} with text "${text}"` : action;
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `Successfully performed action: ${actionText}\n` +
+                  `Using locator strategy: ${
+                    usedLocator?.strategy || "unknown"
+                  }\n` +
+                  `Locator value: ${usedLocator?.value || "unknown"}\n\n` +
+                  `All available locators:\n${JSON.stringify(
+                    locators,
+                    null,
+                    2
+                  )}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `Failed to perform action ${action}. All locator strategies failed.\n` +
+                  `Error: ${
+                    error instanceof Error
+                      ? error.message
+                      : String(error) || "Unknown error"
+                  }\n\n` +
+                  `Found locators (but all failed):\n${JSON.stringify(
+                    locators,
+                    null,
+                    2
+                  )}`,
+              },
+            ],
+          };
+        }
+      } catch (error: unknown) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error in inspect-and-act: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: Capture UI elements and locators
+  server.tool(
+    "capture-ui-locators",
+    "Capture all UI elements and their locators for future use",
+    {
+      elementType: z
+        .string()
+        .optional()
+        .describe("Filter elements by type (e.g., android.widget.Button)"),
+      saveToFile: z
+        .boolean()
+        .optional()
+        .describe("Whether to save the locators to a file"),
+      refreshSource: z
+        .boolean()
+        .optional()
+        .describe("Whether to refresh page source before capture"),
+    },
+    async ({ elementType, saveToFile = true, refreshSource = false }) => {
+      try {
+        if (!appiumHelper) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "No active Appium session. Initialize one first with initialize-appium.",
+              },
+            ],
+          };
+        }
+
+        // Get page source
+        console.log(`Getting page source (refresh: ${refreshSource})`);
+        const pageSource = await appiumHelper.getPageSource(refreshSource);
+
+        // Extract all elements
+        console.log("Extracting elements from page source");
+        const elements = await extractElementsWithLocators(
+          pageSource,
+          elementType
+        );
+
+        if (elements.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: elementType
+                  ? `No elements of type ${elementType} found in the current UI.`
+                  : "No elements found in the current UI.",
+              },
+            ],
+          };
+        }
+
+        // Save to file if requested
+        if (saveToFile) {
+          const locatorsDir = path.join(process.cwd(), "locators");
+          await fs.mkdir(locatorsDir, { recursive: true });
+
+          const filename = `ui_locators_${new Date()
+            .toISOString()
+            .replace(/[:.]/g, "-")}.json`;
+          const filePath = path.join(locatorsDir, filename);
+
+          await fs.writeFile(
+            filePath,
+            JSON.stringify(elements, null, 2),
+            "utf-8"
+          );
+          console.log(
+            `Saved ${elements.length} element locators to ${filePath}`
+          );
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `Captured ${elements.length} UI elements${
+                    elementType ? ` of type ${elementType}` : ""
+                  }.\n` + `Locators saved to ${filePath}`,
+              },
+            ],
+          };
+        }
+
+        // Otherwise just return the elements
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `Captured ${elements.length} UI elements${
+                  elementType ? ` of type ${elementType}` : ""
+                }:\n\n` +
+                `${JSON.stringify(elements.slice(0, 5), null, 2)}\n` +
+                `${
+                  elements.length > 5
+                    ? `\n... and ${elements.length - 5} more elements`
+                    : ""
+                }`,
+            },
+          ],
+        };
+      } catch (error: any) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error capturing UI locators: ${
+                error?.message || String(error)
+              }`,
             },
           ],
         };
@@ -572,4 +1037,327 @@ function generateElementId(): number {
  */
 function getCurrentElementId(): number {
   return elementIdCounter - 1;
+}
+
+/**
+ * Find element locators from page source using the element identifier
+ */
+async function findElementLocators(
+  pageSource: string,
+  elementIdentifier: string | undefined
+): Promise<any> {
+  if (!elementIdentifier) {
+    return {};
+  }
+
+  try {
+    const parsed = await parseStringPromise(pageSource, {
+      explicitArray: false,
+      mergeAttrs: true,
+    });
+
+    // Find elements with attributes matching the identifier
+    const matchingElements: any[] = [];
+    findMatchingElements(parsed, elementIdentifier, matchingElements);
+
+    if (matchingElements.length === 0) {
+      return {};
+    }
+
+    // Use the first matching element
+    const element = matchingElements[0];
+
+    // Extract locators
+    const locators: any = {};
+
+    // Resource ID
+    if (element.resource_id) {
+      locators.resourceId = element.resource_id;
+    }
+
+    // Accessibility ID / Content description
+    if (element.content_desc) {
+      locators.accessibilityId = element.content_desc;
+    }
+
+    // Text
+    if (element.text) {
+      locators.text = element.text;
+    }
+
+    // Class
+    if (element.class) {
+      locators.class = element.class;
+    }
+
+    // Generate XPath
+    if (element.class) {
+      if (element.text) {
+        locators.xpath = `//${element.class}[contains(@text,"${element.text}")]`;
+      } else if (element.content_desc) {
+        locators.xpath = `//${element.class}[contains(@content-desc,"${element.content_desc}")]`;
+      } else if (element.resource_id) {
+        locators.xpath = `//${element.class}[@resource-id="${element.resource_id}"]`;
+      } else {
+        // Create an XPath using index or other attributes if available
+        locators.xpath = `//${element.class}`;
+      }
+    }
+
+    // Generate UIAutomator selector (Android)
+    if (element.resource_id || element.text || element.content_desc) {
+      let uiAutomator = "new UiSelector()";
+
+      if (element.resource_id) {
+        uiAutomator += `.resourceId("${element.resource_id}")`;
+      }
+
+      if (element.text) {
+        uiAutomator += `.text("${element.text}")`;
+      }
+
+      if (element.content_desc) {
+        uiAutomator += `.description("${element.content_desc}")`;
+      }
+
+      if (element.class) {
+        uiAutomator += `.className("${element.class}")`;
+      }
+
+      locators.uiAutomator = uiAutomator;
+    }
+
+    return locators;
+  } catch (error) {
+    console.error("Error finding element locators:", error);
+    return {};
+  }
+}
+
+/**
+ * Find elements recursively that match the identifier
+ */
+function findMatchingElements(
+  obj: any,
+  identifier: string,
+  results: any[]
+): void {
+  if (!obj) return;
+
+  // Check if this object has attributes that match the identifier
+  let isMatch = false;
+
+  // Check resource ID
+  if (obj.resource_id && obj.resource_id.includes(identifier)) {
+    isMatch = true;
+  }
+
+  // Check text
+  if (obj.text && obj.text.includes(identifier)) {
+    isMatch = true;
+  }
+
+  // Check content description / accessibility ID
+  if (obj.content_desc && obj.content_desc.includes(identifier)) {
+    isMatch = true;
+  }
+
+  // If this is a match, add it to results
+  if (isMatch) {
+    results.push(obj);
+  }
+
+  // Process children recursively
+  Object.keys(obj).forEach((key) => {
+    if (typeof obj[key] === "object") {
+      if (Array.isArray(obj[key])) {
+        obj[key].forEach((child: any) =>
+          findMatchingElements(child, identifier, results)
+        );
+      } else {
+        findMatchingElements(obj[key], identifier, results);
+      }
+    }
+  });
+}
+
+/**
+ * Extract all elements with their locators
+ */
+async function extractElementsWithLocators(
+  pageSource: string,
+  elementType?: string
+): Promise<any[]> {
+  try {
+    const parsed = await parseStringPromise(pageSource, {
+      explicitArray: false,
+      mergeAttrs: true,
+    });
+
+    const elements: any[] = [];
+    extractElementsRecursive(parsed, elements, elementType);
+
+    return elements.map((element) => {
+      const locators: any = {};
+
+      // Basic properties
+      locators.type = element.class || "unknown";
+
+      if (element.text) {
+        locators.text = element.text;
+      }
+
+      // Resource ID
+      if (element.resource_id) {
+        locators.id = element.resource_id;
+      }
+
+      // Accessibility ID / Content description
+      if (element.content_desc) {
+        locators.accessibilityId = element.content_desc;
+      }
+
+      // Generate locator strategies
+      const strategies: any = {};
+
+      // ID strategy
+      if (element.resource_id) {
+        strategies.id = element.resource_id;
+      }
+
+      // Accessibility ID strategy
+      if (element.content_desc) {
+        strategies.accessibilityId = element.content_desc;
+      }
+
+      // XPath strategies
+      if (element.class) {
+        const xpathStrategies: any = {};
+
+        if (element.resource_id) {
+          xpathStrategies.byResourceId = `//${element.class}[@resource-id="${element.resource_id}"]`;
+        }
+
+        if (element.text) {
+          xpathStrategies.byText = `//${element.class}[contains(@text,"${element.text}")]`;
+        }
+
+        if (element.content_desc) {
+          xpathStrategies.byContentDesc = `//${element.class}[contains(@content-desc,"${element.content_desc}")]`;
+        }
+
+        strategies.xpath = xpathStrategies;
+      }
+
+      // UIAutomator strategy (Android)
+      if (element.resource_id || element.text || element.content_desc) {
+        let uiAutomator = "new UiSelector()";
+
+        if (element.class) {
+          uiAutomator += `.className("${element.class}")`;
+        }
+
+        if (element.resource_id) {
+          uiAutomator += `.resourceId("${element.resource_id}")`;
+        }
+
+        if (element.text) {
+          uiAutomator += `.text("${element.text}")`;
+        }
+
+        if (element.content_desc) {
+          uiAutomator += `.description("${element.content_desc}")`;
+        }
+
+        strategies.uiAutomator = uiAutomator;
+      }
+
+      // Add strategies to result
+      locators.strategies = strategies;
+
+      // Add original properties for reference
+      locators.properties = {
+        class: element.class,
+        resource_id: element.resource_id,
+        text: element.text,
+        content_desc: element.content_desc,
+        clickable: element.clickable,
+        enabled: element.enabled,
+        focused: element.focused,
+        selected: element.selected,
+      };
+
+      return locators;
+    });
+  } catch (error) {
+    console.error("Error extracting elements with locators:", error);
+    return [];
+  }
+}
+
+/**
+ * Extract elements recursively
+ */
+function extractElementsRecursive(
+  obj: any,
+  results: any[],
+  elementType?: string
+): void {
+  if (!obj) return;
+
+  // Check if this is an element with type/class
+  if (obj.class) {
+    // If no type filter or it matches
+    if (!elementType || obj.class === elementType) {
+      results.push(obj);
+    }
+  }
+
+  // Process children recursively
+  Object.keys(obj).forEach((key) => {
+    if (typeof obj[key] === "object") {
+      if (Array.isArray(obj[key])) {
+        obj[key].forEach((child: any) =>
+          extractElementsRecursive(child, results, elementType)
+        );
+      } else {
+        extractElementsRecursive(obj[key], results, elementType);
+      }
+    }
+  });
+}
+
+/**
+ * Perform an action on an element
+ */
+async function performAction(
+  action: string,
+  selector: string,
+  strategy: string,
+  text?: string,
+  longPressMs?: number
+): Promise<void> {
+  if (!appiumHelper) {
+    throw new Error("Appium helper not initialized");
+  }
+
+  switch (action) {
+    case "tap":
+      await appiumHelper.tapElement(selector, strategy);
+      break;
+    case "sendKeys":
+      if (!text) {
+        throw new Error("Text is required for sendKeys action");
+      }
+      await appiumHelper.sendKeys(selector, text, strategy);
+      break;
+    case "longPress":
+      await appiumHelper.longPress(selector, longPressMs || 1000, strategy);
+      break;
+    case "clear":
+      await appiumHelper.clearElement(selector, strategy);
+      break;
+    default:
+      throw new Error(`Unsupported action: ${action}`);
+  }
 }
