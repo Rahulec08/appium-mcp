@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server implementation for mobile app automation using Appium.
 
+<a href="https://glama.ai/mcp/servers/@Rsec08/appium-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Rsec08/appium-mcp/badge" alt="Appium Server MCP server" />
+</a>
+
 ## Prerequisites
 
 1. Node.js (v14 or higher)
