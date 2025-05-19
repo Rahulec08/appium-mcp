@@ -1,27 +1,28 @@
-# Testing MCP-Appium with Claude
+# Testing MCP-Appium-Visual with Claude
 
-This guide explains how to use Claude to control your MCP-Appium server for mobile test automation using natural language.
+This guide explains how to use Claude to control your MCP-Appium-Visual server for mobile test automation using natural language.
 
 ## Setup and Requirements
 
 1. Make sure your `@modelcontextprotocol/sdk` dependencies are installed
 2. Ensure Appium is installed and properly configured
 3. Have a mobile device or emulator connected
-4. Compile the Claude integration script: 
+4. Compile the Claude integration script:
    ```
    npx tsc examples/claude-mcp-test.ts --outDir dist/examples --esModuleInterop
    ```
 
 ## Running the Demo Client
 
-The demo client provides a command-line interface to simulate how Claude would interact with your MCP-Appium server:
+The demo client provides a command-line interface to simulate how Claude would interact with your MCP-Appium-Visual server:
 
 ```
 node dist/examples/claude-mcp-test.js
 ```
 
 This will start:
-- The MCP-Appium server in the background
+
+- The MCP-Appium-Visual server in the background
 - An interactive CLI that processes natural language commands
 
 ## Available Commands
@@ -37,23 +38,26 @@ The demo supports these natural language commands:
 - **"Help"** - Shows available commands
 - **"Exit"** or **"Quit"** - Closes the session
 
-## How It Works
+## Visual Recovery Features
 
-1. When you enter a natural language command, the demo client parses it using simple keyword matching
-2. In a real Claude integration, Claude would intelligently parse commands and extract parameters
-3. The client calls the appropriate MCP tool with the extracted parameters
-4. The MCP server executes the corresponding actions on the mobile device
+MCP-Appium-Visual adds powerful visual recovery features beyond standard Appium capabilities:
+
+1. **Visual Element Identification** - When standard locators fail, the system can use visual analysis to find elements
+2. **Automatic UI Recovery** - Adapts to UI changes by using image recognition to locate similar elements
+3. **Screenshot Comparison** - Compares current screen with previous known states to detect changes
 
 ## Integrating with Real Claude API
 
 For a production implementation, you would:
 
 1. Send user commands to Claude along with context about:
+
    - Available mobile automation tools
    - Device information
    - Current screen state
 
 2. Have Claude generate structured outputs that:
+
    - Identify the appropriate MCP tool to use
    - Extract parameters from the natural language command
    - Return a JSON object with the tool name and arguments
@@ -63,6 +67,7 @@ For a production implementation, you would:
 ## Debugging Tips
 
 - If you encounter Appium session initialization errors, check that:
+
   - Your device is properly connected and recognized
   - You have the correct Appium capabilities with required `appium:` prefixes
   - Appium server is running and accessible at the default port
@@ -75,22 +80,22 @@ For a production implementation, you would:
 ## Example Script for Claude Integration
 
 ```typescript
-import Anthropic from '@anthropic-ai/sdk';
+import Anthropic from "@anthropic-ai/sdk";
 import { McpClient } from "@modelcontextprotocol/sdk";
 
 // In your real implementation:
 const anthropic = new Anthropic({
-  apiKey: 'your-api-key',
+  apiKey: "your-api-key",
 });
 
 // Example of sending a command to Claude
 async function processWithClaude(command, context) {
   const response = await anthropic.messages.create({
-    model: 'claude-3-opus-20240229',
+    model: "claude-3-opus-20240229",
     max_tokens: 1000,
     messages: [
       {
-        role: 'user',
+        role: "user",
         content: `
         You are an AI assistant helping with mobile app automation.
         
@@ -105,11 +110,11 @@ async function processWithClaude(command, context) {
         Return a JSON object with:
         1. toolName: the MCP tool to call
         2. arguments: the parameters to pass to the tool
-        `
-      }
-    ]
+        `,
+      },
+    ],
   });
-  
+
   return JSON.parse(response.content[0].text);
 }
 ```

@@ -1,377 +1,241 @@
-# MCP Appium Server
+# MCP-Appium-Visual
 
-A Model Context Protocol (MCP) server implementation for mobile app automation using Appium.
+Model Context Protocol (MCP) Server for Appium mobile automation with visual recovery capabilities. This package provides a bridge between AI assistants (like Claude, GitHub Copilot) and mobile app testing using Appium, with advanced visual analysis for UI recovery.
 
-<a href="https://glama.ai/mcp/servers/@Rsec08/appium-mcp">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Rsec08/appium-mcp/badge" alt="Appium Server MCP server" />
-</a>
+The server integrates seamlessly with the Model Context Protocol ecosystem, allowing it to work alongside other MCP servers like Playwright for comprehensive testing solutions.
 
-## Prerequisites
+## Features
 
-1. Node.js (v14 or higher)
-2. Java Development Kit (JDK)
-3. Android SDK (for Android testing)
-4. Xcode (for iOS testing, macOS only)
-5. Appium Server
-6. Android device or emulator / iOS device or simulator
+- 🚀 Control mobile devices through natural language using AI assistants
+- 📱 Support for both Android and iOS device automation
+- 🔍 Advanced element finding and UI interactions
+- 🌐 Deep linking and app navigation
+- 📸 Screenshot and UI analysis capabilities
+- 🔄 Visual recovery for handling UI changes and element locator failures
+- 🛠️ Interactive CLI mode for quick testing
+- ⚡ NPX support for easy integration with other MCP servers
 
-## Environment Setup
+## Installation
 
-Before executing any commands, ensure your environment variables are properly set up:
+You can install MCP-Appium-Visual using multiple methods:
 
-1. Make sure your `.bash_profile`, `.zshrc` or other shell configuration file contains the necessary environment variables:
+### Using npm (Recommended)
 
 ```bash
-# Example environment variables in ~/.bash_profile
-export JAVA_HOME=/path/to/your/java
-export ANDROID_HOME=/path/to/your/android/sdk
-export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+# Install globally
+npm install -g mcp-appium-visual
+
+# Or install for the current project only
+npm install mcp-appium-visual
 ```
 
-2. Source your environment file before running MCP-Appium:
+### Using npx (No Installation Required)
 
 ```bash
-source ~/.bash_profile  # For bash
-# OR
-source ~/.zshrc         # For zsh
+# Run directly using npx
+npx mcp-appium-visual
 ```
 
-> **Note**: The system will attempt to source your `.bash_profile` automatically when initializing the driver, but it's recommended to ensure proper environment setup manually before running tests in a new terminal session.
-
-### Xcode Command Line Tools Configuration
-
-For iOS testing, proper Xcode command line tools configuration is essential:
-
-1. Install Xcode command line tools if not already installed:
+### Using mcp-get
 
 ```bash
-xcode-select --install
+npx @michaellatman/mcp-get@latest install mcp-appium-visual
 ```
 
-2. Verify the installation and check the current Xcode path:
+### Using Smithery
+
+To install MCP-Appium-Visual for Claude Desktop automatically via Smithery:
 
 ```bash
-xcode-select -p
+npx @smithery/cli install mcp-appium-visual --client claude
 ```
 
-3. If needed, set the correct Xcode path (especially if you have multiple Xcode versions):
+### Installation in VS Code
+
+Install the MCP-Appium-Visual server in VS Code using the VS Code CLI:
 
 ```bash
-sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+# For VS Code
+code --add-mcp '{"name":"mcp-appium-visual","command":"npx","args":["mcp-appium-visual"]}'
+
+# For VS Code Insiders
+code-insiders --add-mcp '{"name":"mcp-appium-visual","command":"npx","args":["mcp-appium-visual"]}'
 ```
 
-4. Accept Xcode license agreements:
+After installation, the MCP-Appium-Visual server will be available for use with AI assistants in VS Code.
 
-```bash
-sudo xcodebuild -license accept
+### Requirements
+
+- Node.js 18 or later
+- Appium 2.0 or later
+- Android SDK (for Android testing)
+- Xcode (for iOS testing)
+
+## Configuration to use MCP-Appium-Visual Server
+
+Here's the Claude Desktop configuration to use the MCP-Appium-Visual server:
+
+```json
+{
+  "mcpServers": {
+    "mobile-automation": {
+      "command": "npx",
+      "args": ["-y", "mcp-appium-visual"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}
 ```
 
-5. For iOS real device testing, ensure your Apple Developer account is properly configured in Xcode:
+Alternative configuration using stdio transport:
 
-   - Open Xcode
-   - Go to Preferences > Accounts
-   - Add your Apple ID if not already added
-   - Download the necessary provisioning profiles
-
-6. Set up environment variables for iOS development:
-
-```bash
-# Add these to your ~/.bash_profile or ~/.zshrc
-export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
+```json
+{
+  "servers": [
+    {
+      "name": "MCP-Appium-Visual",
+      "transport": "stdio",
+      "command": "mcp-appium-visual"
+    }
+  ]
+}
 ```
 
-7. Source your updated configuration:
+## Usage
+
+### Starting the Server
+
+To start the MCP-Appium-Visual server for use with AI assistants:
 
 ```bash
-source ~/.bash_profile  # For bash
-# OR
-source ~/.zshrc         # For zsh
+mcp-appium-visual
 ```
 
-## Setup
+This will start both the Appium server and the MCP protocol handler.
 
-1. Install dependencies:
+### Interactive CLI Mode
+
+For quick testing and interactive mobile automation without coding:
 
 ```bash
+mcp-appium-visual cli
+```
+
+This launches an interactive CLI where you can:
+
+- Connect to devices
+- Install apps
+- Take screenshots
+- Execute UI automation commands
+- Extract element locators
+- Use visual recovery for flaky tests
+- And much more
+
+### Command Line Options
+
+```bash
+mcp-appium-visual [command]
+```
+
+Available commands:
+
+- `start` - Start the MCP-Appium-Visual server (default)
+- `cli` - Start the interactive CLI for mobile testing
+- `help` - Show help information
+- `version` - Show version information
+
+## Integration with Claude
+
+MCP-Appium works with Claude Desktop and other AI assistants supporting the Model Context Protocol:
+
+1. Start the MCP-Appium server:
+
+   ```bash
+   mcp-appium
+   ```
+
+2. Add the server to your Claude Desktop configuration (as shown in the Configuration section).
+
+3. Restart Claude Desktop.
+
+4. Talk to Claude about mobile testing and let it control your devices through the MCP-Appium server.
+
+## Agent Integration Features
+
+### What's New in Version 1.1.0
+
+This version enhances support for integration with various AI agent environments:
+
+- **Claude Desktop Integration**: Improved configuration for seamless use with Claude Desktop
+- **VS Code Integration**: Enhanced support for VS Code extensions using the Model Context Protocol
+- **Universal Agent Support**: Standardized interfaces for any MCP-compatible agent
+- **Automatic Tool Discovery**: Agents can automatically discover available mobile automation capabilities
+
+### Supported Agent Environments
+
+MCP-Appium can be used with:
+
+- **Claude Desktop**: For desktop AI assistant interaction
+- **VS Code extensions**: For in-editor mobile app development and testing
+- **Smithery**: Managed AI environment with built-in tool support
+- **Custom MCP clients**: Any environment implementing the Model Context Protocol
+
+### Integration Instructions
+
+For detailed integration instructions for different agent environments, see [examples/CLAUDE-INTEGRATION.md](./examples/CLAUDE-INTEGRATION.md).
+
+## Testing
+
+The project includes several test examples that demonstrate how to use MCP-Appium for mobile testing:
+
+```bash
+# Run the basic Appium test
+npm run test
+
+# Run specific test examples
+ts-node examples/deeplink-test.ts
+ts-node examples/calculator-test.ts
+ts-node examples/visual-recovery-test.ts
+```
+
+Test examples are located in the `examples/` directory and can be used as reference implementations.
+
+## Examples
+
+See the [EXAMPLE.md](./EXAMPLE.md) file for detailed examples of:
+
+- Setting up Appium sessions
+- Finding and interacting with UI elements
+- Taking screenshots and analyzing UI
+- Using deep links
+- Handling advanced gestures
+
+## Development
+
+To develop or contribute to MCP-Appium:
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/mcp-appium.git
+cd mcp-appium
+
+# Install dependencies
 npm install
-```
 
-2. Install and start Appium server:
-
-```bash
-npm install -g appium
-appium
-```
-
-3. Set up Android device/emulator:
-
-   - Enable Developer Options on your Android device
-   - Enable USB Debugging
-   - Connect device via USB or start an emulator
-   - Verify device is connected using `adb devices`
-
-4. For iOS testing (macOS only):
-   - Ensure Xcode command line tools are installed: `xcode-select --install`
-   - Set up iOS simulator or connect a real device
-   - Trust the development computer on the iOS device if using a real device
-
-## Running Tests
-
-1. Build the project:
-
-```bash
+# Build the project
 npm run build
-```
 
-2. Start the MCP server:
-
-```bash
+# Start in development mode
 npm run dev
 ```
 
-3. In a new terminal, run the test:
-
-```bash
-npm test
-```
-
-## Test Configuration
-
-### Android Configuration
-
-The example test uses the Android Settings app as a demo. To test your own app:
-
-1. Edit `examples/appium-test.ts`:
-
-   - Update `deviceName` to match your device
-   - Set `app` path to your APK file, or
-   - Update `appPackage` and `appActivity` for an installed app
-
-2. Common capabilities configuration:
-
-```typescript
-const capabilities: AppiumCapabilities = {
-  platformName: "Android",
-  deviceName: "YOUR_DEVICE_NAME",
-  automationName: "UiAutomator2",
-  // For installing and testing an APK:
-  app: "./path/to/your/app.apk",
-  // OR for testing an installed app:
-  appPackage: "your.app.package",
-  appActivity: ".MainActivity",
-  noReset: true,
-};
-```
-
-### iOS Configuration
-
-For iOS testing using the new Xcode command line support:
-
-1. Example configuration in `examples/xcode-appium-example.ts`:
-
-```typescript
-const capabilities: AppiumCapabilities = {
-  platformName: "iOS",
-  deviceName: "iPhone 13", // Your simulator or device name
-  automationName: "XCUITest",
-  udid: "DEVICE_UDID", // Get this from XcodeCommands.getIosSimulators()
-  // For installing and testing an app:
-  app: "./path/to/your/app.app",
-  // OR for testing an installed app:
-  bundleId: "com.your.app",
-  noReset: true,
-};
-```
-
-## Available Actions
-
-The MCP server supports various Appium actions:
-
-1. Element Interactions:
-
-   - Find elements
-   - Tap/click elements with W3C Actions API (See "W3C Standard Gestures" section)
-   - Type text
-   - Scroll to element with W3C Actions API
-   - Long press
-
-2. App Management:
-
-   - Launch/close app
-   - Reset app
-   - Get current package/activity
-
-3. Device Controls:
-
-   - Screen orientation
-   - Keyboard handling
-   - Device lock/unlock
-   - Screenshots
-   - Battery info
-
-4. Advanced Features:
-
-   - Context switching (Native/WebView)
-   - File operations
-   - Notifications
-   - Custom gestures
-
-5. Xcode Command Line Tools (iOS only):
-   - Manage iOS simulators (boot, shutdown)
-   - Install/uninstall apps on simulators
-   - Launch/terminate apps
-   - Take screenshots
-   - Record videos
-   - Create/delete simulators
-   - Get device types and runtimes
-
-## W3C Standard Gestures
-
-The MCP-Appium library now implements the W3C WebDriver Actions API for touch gestures, which is the modern standard for mobile automation.
-
-### W3C Actions for Tap Elements
-
-The `tapElement` method now uses the W3C Actions API with intelligent fallbacks:
-
-```typescript
-// The method will try in this order:
-// 1. Standard WebdriverIO click()
-// 2. W3C Actions API
-// 3. Legacy TouchAction API (fallback for backward compatibility)
-await appium.tapElement("//android.widget.Button[@text='OK']");
-// or using the click alias
-await appium.click("//android.widget.Button[@text='OK']");
-```
-
-### W3C Actions for Scrolling
-
-The `scrollToElement` method now uses W3C Actions API:
-
-```typescript
-// Uses W3C Actions API for more reliable scrolling
-await appium.scrollToElement(
-  "//android.widget.TextView[@text='About phone']", // selector
-  "down", // direction: "up", "down", "left", "right"
-  "xpath", // strategy
-  10 // maxScrolls
-);
-```
-
-### Custom W3C Gestures
-
-You can create your own custom W3C gestures using the `executeMobileCommand` method:
-
-```typescript
-// Create custom W3C Actions API gesture
-const w3cActions = {
-  actions: [
-    {
-      type: "pointer",
-      id: "finger1",
-      parameters: { pointerType: "touch" },
-      actions: [
-        // Move to start position
-        { type: "pointerMove", duration: 0, x: startX, y: startY },
-        // Press down
-        { type: "pointerDown", button: 0 },
-        // Move to end position over duration milliseconds
-        {
-          type: "pointerMove",
-          duration: duration,
-          origin: "viewport",
-          x: endX,
-          y: endY,
-        },
-        // Release
-        { type: "pointerUp", button: 0 },
-      ],
-    },
-  ],
-};
-
-// Execute the W3C Actions using executeScript
-await appium.executeMobileCommand("performActions", [w3cActions.actions]);
-```
-
-See `examples/w3c-actions-swipe-demo.ts` for more examples of W3C standard gesture implementations.
-
-## Using Xcode Command Line Tools
-
-The new `XcodeCommands` class provides powerful tools for iOS testing:
-
-```typescript
-import { XcodeCommands } from "../src/lib/xcode/xcodeCommands.js";
-
-// Check if Xcode CLI tools are installed
-const isInstalled = await XcodeCommands.isXcodeCliInstalled();
-
-// Get available simulators
-const simulators = await XcodeCommands.getIosSimulators();
-
-// Boot a simulator
-await XcodeCommands.bootSimulator("SIMULATOR_UDID");
-
-// Install an app
-await XcodeCommands.installApp("SIMULATOR_UDID", "/path/to/app.app");
-
-// Launch an app
-await XcodeCommands.launchApp("SIMULATOR_UDID", "com.example.app");
-
-// Take a screenshot
-await XcodeCommands.takeScreenshot("SIMULATOR_UDID", "/path/to/output.png");
-
-// Shutdown a simulator
-await XcodeCommands.shutdownSimulator("SIMULATOR_UDID");
-```
-
-## Using the Click Function
-
-The `click()` method provides a more intuitive alternative to `tapElement()`:
-
-```typescript
-// Using the click method
-await appium.click("//android.widget.Button[@text='OK']");
-
-// This is equivalent to:
-await appium.tapElement("//android.widget.Button[@text='OK']");
-```
-
-## Troubleshooting
-
-1. Device not found:
-
-   - Check `adb devices` output
-   - Verify USB debugging is enabled
-   - Try reconnecting the device
-
-2. App not installing:
-
-   - Verify APK path is correct
-   - Check device has enough storage
-   - Ensure app is signed for debug
-
-3. Elements not found:
-
-   - Use Appium Inspector to verify selectors
-   - Check if elements are visible on screen
-   - Try different locator strategies
-
-4. Connection issues:
-
-   - Verify Appium server is running
-   - Check port conflicts
-   - Ensure correct capabilities are set
-
-5. iOS Simulator issues:
-   - Verify Xcode command line tools are installed: `xcode-select -p`
-   - Check simulator UDID is correct using `xcrun simctl list devices`
-   - Close and restart simulator if it becomes unresponsive
-
-## Contributing
-
-Feel free to submit issues and pull requests for additional features or bug fixes.
-
 ## License
 
-MIT
+ISC
+
+## Support
+
+For issues, questions, or feature requests, please open an issue on the GitHub repository.

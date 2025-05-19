@@ -1,0 +1,10 @@
+{
+  "name": "mcp-appium-examples",
+  "version": "1.0.0",
+  "description": "Examples for MCP-Appium",
+  "type": "module",
+  "scripts": {
+    "test-config": "node --loader ts-node/esm test-npx-config.ts",
+    "test-config-js": "node test-npx-config.js"
+  }
+}

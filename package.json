@@ -1,56 +1,127 @@
 {
-  "name": "mcp-appium",
-  "version": "1.0.0",
-  "description": "MCP Server for Appium mobile automation",
+  "name": "mcp-appium-visual",
+  "version": "1.2.0",
+  "description": "MCP Server for Appium mobile automation with visual recovery",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "type": "module",
   "bin": {
-    "mcp-appium": "./dist/launcher.js",
-    "mcp-appium-cli": "./dist/cli.js"
+    "mcp-appium-visual": "./dist/command.js",
+    "mcp-appium-visual-server": "./dist/launcher.js",
+    "mcp-appium-visual-cli": "./dist/cli.js",
+    "mcp-appium": "./dist/npx-entry.js",
+    "mcp-appium-cjs": "./dist/npx-entry.cjs"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-cjs",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "ts-node examples/appium-test.ts",
     "lint": "eslint src/**/*.ts",
     "clean": "rimraf dist",
-    "prepare": "npm run build",
+    "prepare": "npm run build && npm run set-permissions",
     "launch": "node dist/launcher.js",
-    "cli": "node dist/cli.js"
+    "cli": "node dist/cli.js",
+    "copy-cjs": "cp src/npx-entry.cjs src/index.cjs dist/",
+    "set-permissions": "chmod +x dist/*.js dist/*.cjs 2>/dev/null || true",
+    "prepublishOnly": "npm run clean && npm run build && npm run set-permissions"
   },
   "keywords": [
     "mcp",
     "appium",
     "mobile",
     "automation",
-    "testing"
+    "testing",
+    "ai",
+    "claude",
+    "model-context-protocol",
+    "claude-mcp",
+    "vscode-mcp"
   ],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rahulec08/mcp-appium"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "EXAMPLE.md",
+    "LICENSE",
+    "mcp-config.sample.json",
+    "claude-desktop-config.sample.json",
+    "NPX_USAGE_GUIDE.md",
+    "NPM_PACKAGE_TROUBLESHOOTING.md",
+    "CROSS_PLATFORM_TROUBLESHOOTING.md",
+    "test-all-environments.sh",
+    "examples/CLAUDE-INTEGRATION.md",
+    "examples/VS-CODE-INTEGRATION.md",
+    "examples/npm-compatible-test.cjs"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
     "@types/xml2js": "^0.4.14",
     "appium": "^2.4.1",
     "appium-uiautomator2-driver": "^2.34.1",
-    "appium-xcuitest-driver": "^5.11.0",
     "appium-webdriveragent": "^9.6.1",
-    "wd": "^1.14.0",
-    "webdriverio": "^8.29.0",
-    "xml2js": "^0.6.2",
-    "zod": "^3.22.4",
+    "appium-xcuitest-driver": "^5.11.0",
     "applesign": "5.0.0",
     "archiver": "^5.3.1",
     "ios-mobileprovision-finder": "1.2.1",
+    "jimp": "^1.6.0",
+    "pixelmatch": "^7.1.0",
+    "pngjs": "^7.0.0",
     "rimraf": "^6.0.1",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "sharp": "^0.34.1",
+    "tesseract.js": "^6.0.1",
+    "wd": "^1.14.0",
+    "webdriverio": "^8.29.0",
+    "xml2js": "^0.6.2",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
+    "@types/pngjs": "^6.0.5",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.56.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
+  },
+  "mcpServer": {
+    "name": "appium-visual",
+    "description": "MCP Server for Appium mobile automation with visual recovery",
+    "version": "1.1.0",
+    "serverCommand": "npx",
+    "serverArgs": [
+      "mcp-appium-visual-server"
+    ],
+    "documentation": "https://github.com/rahulec08/mcp-appium-visual"
+  },
+  "smitheryMetadata": {
+    "name": "Appium Visual MCP Server",
+    "description": "Mobile automation testing with Appium and visual recovery through Model Context Protocol",
+    "repository": "rahulec08/mcp-appium-visual",
+    "tags": [
+      "mobile",
+      "testing",
+      "automation",
+      "appium",
+      "android",
+      "ios",
+      "visual-recovery"
+    ],
+    "installOnSmithery": true
   }
 }

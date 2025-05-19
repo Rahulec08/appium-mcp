@@ -1,0 +1,61 @@
+{
+  "timestamp": "2025-05-15T09:13:55.460Z",
+  "tests": {
+    "ocr": [
+      {
+        "name": "Basic OCR",
+        "passed": false,
+        "details": {
+          "screenshot": "about_phone_2025-05-12T07-58-15-397Z.png",
+          "wordsDetected": 0,
+          "confidence": 0
+        }
+      }
+    ],
+    "uiElementDetection": [],
+    "templateMatching": [
+      {
+        "name": "Template Matching",
+        "passed": false,
+        "error": "No elements detected for template creation"
+      }
+    ],
+    "imageComparison": [
+      {
+        "name": "Basic Image Comparison",
+        "passed": true,
+        "details": {
+          "image1": "about_phone_2025-05-12T07-58-15-397Z.png",
+          "image2": "about_phone_2025-05-14T07-28-23-858Z.png",
+          "diffPercentage": 0.037605358680940074,
+          "diffImagePath": "/Users/rahulsharma/AILearning/mcp-appium/test-output/diff_1747300439452.png"
+        }
+      }
+    ],
+    "textFinding": [
+      {
+        "name": "Text Finding",
+        "passed": false,
+        "error": "No text found in the screenshot"
+      }
+    ],
+    "visualElementFinder": [
+      {
+        "name": "Find Any Element",
+        "passed": false,
+        "details": {
+          "screenshot": "about_phone_2025-05-12T07-58-15-397Z.png",
+          "result": null
+        }
+      },
+      {
+        "name": "Find Button Element",
+        "passed": false,
+        "details": {
+          "screenshot": "about_phone_2025-05-12T07-58-15-397Z.png",
+          "result": null
+        }
+      }
+    ]
+  }
+}

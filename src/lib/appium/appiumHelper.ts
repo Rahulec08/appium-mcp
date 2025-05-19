@@ -469,9 +469,21 @@ export class AppiumHelper {
               element = await this.driver!.$(`${selector}`);
           }
 
-          // Make sure element is visible and clickable
-          console.log("Waiting for element to be clickable...");
-          await element.waitForClickable({ timeout: 5000 });
+          // Make sure element is visible - we avoid waitForClickable since it's not supported in mobile native environments
+          console.log("Waiting for element to be visible...");
+          await element.waitForDisplayed({ timeout: 5000 });
+
+          try {
+            // Some elements don't support enabled state, so we'll try but not fail if not supported
+            await element.waitForEnabled({ timeout: 2000 });
+          } catch (enabledError) {
+            console.log(
+              "Note: Element doesn't support enabled state check, continuing anyway"
+            );
+          }
+
+          // Add a small pause to ensure element is fully loaded
+          await new Promise((resolve) => setTimeout(resolve, 300));
 
           // First try using standard element click() method
           try {
@@ -1874,6 +1886,284 @@ export class AppiumHelper {
     } catch (error) {
       throw new AppiumError(
         `Failed to find elements containing text "${text}": ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Open a deep link URL directly in an app
+   *
+   * @param url The URL/URI to open (e.g. "myapp://details/1234" or a http/https URL)
+   * @returns true if successful
+   * @throws AppiumError if the operation fails
+   */
+  async openDeepLink(url: string): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      console.log(`Attempting to open deep link: ${url}`);
+
+      // Use executeScript to run mobile:deepLink command
+      // This works for both Android and iOS
+      await this.driver.executeScript("mobile:deepLink", [
+        {
+          url: url,
+          package: await this.getCurrentPackage(), // Optional but helps on Android
+        },
+      ]);
+
+      // Small pause to let the app respond to the deep link
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log("Deep link opened successfully");
+      return true;
+    } catch (error) {
+      // Try alternative methods if the first approach fails
+      try {
+        console.log("First approach failed, trying alternative method...");
+
+        // Platform-specific approaches
+        const capabilities = await this.driver.capabilities;
+        // Access platformName safely from capabilities
+        const platform =
+          (capabilities as any).platformName?.toString().toLowerCase() ||
+          (capabilities as any)["appium:platformName"]
+            ?.toString()
+            .toLowerCase();
+
+        if (platform === "android") {
+          // Android alternative using am start command
+          const encodedUrl = encodeURIComponent(url);
+          const pkg = await this.getCurrentPackage();
+          await this.driver.executeScript("mobile:shell", [
+            {
+              command: `am start -a android.intent.action.VIEW -d "${encodedUrl}" ${pkg}`,
+            },
+          ]);
+        } else if (platform === "ios") {
+          // iOS alternative using Safari URL handling
+          await this.driver.url(url);
+        }
+
+        // Small pause to let the app respond to the deep link
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        console.log("Deep link opened successfully using alternative method");
+        return true;
+      } catch (alternativeError) {
+        throw new AppiumError(
+          `Failed to open deep link ${url}: ${
+            error instanceof Error ? error.message : String(error)
+          }. Alternative method also failed: ${
+            alternativeError instanceof Error
+              ? alternativeError.message
+              : String(alternativeError)
+          }`,
+          error instanceof Error ? error : undefined
+        );
+      }
+    }
+  }
+
+  /**
+   * Open a deep link using Android Intent
+   * This is a more specific Android-only method that allows setting additional intent parameters
+   *
+   * @param url The URL/URI to open
+   * @param extras Optional extras to add to the intent
+   * @returns true if successful
+   */
+  async openAndroidDeepLink(
+    url: string,
+    extras?: Record<string, string>
+  ): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    // Check if we're on Android
+    const capabilities = await this.driver.capabilities;
+    // Access platformName safely from capabilities
+    const platform =
+      (capabilities as any).platformName?.toString().toLowerCase() ||
+      (capabilities as any)["appium:platformName"]?.toString().toLowerCase();
+
+    if (platform !== "android") {
+      throw new AppiumError("This method is only supported on Android");
+    }
+
+    try {
+      console.log(`Attempting to open Android deep link: ${url}`);
+
+      let command = `am start -a android.intent.action.VIEW -d "${encodeURIComponent(
+        url
+      )}"`;
+
+      // Add extras if provided
+      if (extras && Object.keys(extras).length > 0) {
+        for (const [key, value] of Object.entries(extras)) {
+          command += ` --es "${key}" "${value}"`;
+        }
+      }
+
+      // Execute the adb shell command
+      await this.driver.executeScript("mobile:shell", [
+        {
+          command,
+        },
+      ]);
+
+      // Small pause to let the app respond to the deep link
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log("Android deep link opened successfully");
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to open Android deep link ${url}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Get the window size (screen dimensions)
+   *
+   * @returns Object containing width and height of the screen
+   */
+  async getWindowSize(): Promise<{ width: number; height: number }> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      const size = await this.driver.getWindowSize();
+      return {
+        width: size.width,
+        height: size.height,
+      };
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get window size: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Tap at specific coordinates on the screen
+   *
+   * @param x X-coordinate
+   * @param y Y-coordinate
+   * @returns true if successful
+   */
+  async tapByCoordinates(x: number, y: number): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      console.log(`Tapping at coordinates: (${x}, ${y})`);
+
+      try {
+        // First try using W3C Actions API (modern approach)
+        const actions = [
+          {
+            type: "pointer",
+            id: "finger1",
+            parameters: { pointerType: "touch" },
+            actions: [
+              // Move to specified position
+              { type: "pointerMove", duration: 0, x, y },
+              // Press down
+              { type: "pointerDown", button: 0 },
+              // Short wait
+              { type: "pause", duration: 100 },
+              // Release
+              { type: "pointerUp", button: 0 },
+            ],
+          },
+        ];
+
+        await this.driver.performActions(actions);
+      } catch (w3cError) {
+        // If W3C Actions fail, fall back to TouchAction API
+        console.log("W3C Actions failed, falling back to TouchAction API");
+        await this.driver.touchAction([{ action: "tap", x, y }]);
+      }
+
+      // Small pause after tap to let UI update
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to tap at coordinates (${x}, ${y}): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Perform advanced touch actions using W3C Actions API
+   * Allows for complex gestures like multi-touch, long press, etc.
+   *
+   * @param actions Array of W3C Action objects
+   * @returns true if successful
+   */
+  async performActions(actions: any[]): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.performActions(actions);
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to perform actions: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Send text to the currently active/focused element
+   * Useful when you've already focused on an input field
+   *
+   * @param text Text to send
+   * @returns true if successful
+   */
+  async sendTextToActiveElement(text: string): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      // For most devices, we can use the keys command to send text to active element
+      await this.driver.keys(text.split(""));
+
+      // For some platforms/situations, we might need to use different approaches
+      // Here's a fallback method using Actions API if the above fails:
+      try {
+        await this.hideKeyboard();
+      } catch (e) {
+        // Ignore errors when hiding keyboard
+      }
+
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to send text to active element: ${
           error instanceof Error ? error.message : String(error)
         }`,
         error instanceof Error ? error : undefined

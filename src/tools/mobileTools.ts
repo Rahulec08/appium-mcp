@@ -4232,4 +4232,133 @@ export function registerMobileTools(server: McpServer) {
       }
     }
   );
+
+  // Tool: Open a deeplink on a mobile device
+  server.tool(
+    "open-deeplink",
+    "Opens a deep link on a mobile device, launching the appropriate app",
+    {
+      url: z
+        .string()
+        .describe(
+          "The deep link URL to open (e.g., 'youtube://' or 'https://www.example.com')"
+        ),
+      package: z
+        .string()
+        .optional()
+        .describe(
+          "Optional package name for Android (will use current package if not specified)"
+        ),
+    },
+    async (params, extra) => {
+      const helper = await getValidAppiumHelper();
+      if (!helper) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Appium session not initialized or invalid. Call initialize-appium first.",
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      try {
+        // Use the AppiumHelper's openDeepLink method
+        await helper.openDeepLink(params.url);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Successfully opened deep link: ${params.url}`,
+            },
+          ],
+        };
+      } catch (error) {
+        console.error("Error opening deep link:", error);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error opening deep link: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // Tool: Open an Android-specific deeplink with extras
+  server.tool(
+    "open-android-deeplink",
+    "Opens an Android-specific deep link with optional extras",
+    {
+      url: z.string().describe("The deep link URL to open"),
+      extras: z
+        .record(z.string(), z.string())
+        .optional()
+        .describe("Additional key-value parameters to pass with the intent"),
+    },
+    async (params, extra) => {
+      const helper = await getValidAppiumHelper();
+      if (!helper) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Appium session not initialized or invalid. Call initialize-appium first.",
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      try {
+        // Use the AppiumHelper's openAndroidDeepLink method
+        await helper.openAndroidDeepLink(params.url, params.extras);
+
+        const extrasInfo = params.extras
+          ? `with ${Object.keys(params.extras).length} extras`
+          : "with no extras";
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Successfully opened Android deep link: ${params.url} ${extrasInfo}`,
+            },
+          ],
+        };
+      } catch (error) {
+        console.error("Error opening Android deep link:", error);
+
+        let errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        // Add platform-specific context if relevant
+        if (
+          error instanceof Error &&
+          error.message.includes("only supported on Android")
+        ) {
+          errorMessage =
+            "This method is only supported on Android devices: " + errorMessage;
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error opening Android deep link: ${errorMessage}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
 }
