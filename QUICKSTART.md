@@ -1,62 +1,68 @@
-# Quick Start Guide: MCP-Appium Server
+# MCP-Appium-Visual: Quick Start Guide ✅
 
-This quick start guide will help you get started with the MCP-Appium server for mobile automation testing.
+## 🚀 Installation & Setup (2 minutes)
 
-## Installation
+1. **Install globally:**
 
-### Option 1: Install from NPM
+   ```bash
+   npm install -g mcp-appium-visual@1.2.3
+   ```
 
-```bash
-# Install globally
-npm install -g mcp-appium-visual
+2. **Verify installation:**
 
-# Or install locally in your project
-npm install --save-dev mcp-appium-visual
-```
+   ```bash
+   mcp-appium-visual --help
+   ```
 
-### Option 2: Clone and Build from Source
+3. **Configure Claude Desktop:**
+   Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
-```bash
-# Clone the repository
-git clone https://github.com/username/mcp-appium
-cd mcp-appium
+   ```json
+   {
+     "mcpServers": {
+       "mcp-appium-visual": {
+         "command": "mcp-appium-visual",
+         "args": [],
+         "env": {}
+       }
+     }
+   }
+   ```
 
-# Install dependencies
-npm install
+4. **Restart Claude Desktop** and start automating mobile apps!
 
-# Build the project
-npm run build
-```
+## 🎯 What You Get
 
-## Prerequisites
+- **63+ Mobile Automation Tools** ready to use in Claude
+- **iOS & Android Support** with platform-specific features
+- **Visual Recovery** - automatically adapt when UI changes
+- **Smart Element Finding** - multiple locator strategies
+- **Deep Link Testing** - test app navigation flows
+- **Screen Recording** - capture test sessions
+- **ADB Integration** - direct Android device control
 
-- Node.js (v16 or later)
-- Appium server (v2.0 or later)
-- Android SDK (for Android testing)
-- Xcode (for iOS testing)
+## 📱 Example Usage in Claude
 
-Make sure Appium is installed and configured:
+"Take a screenshot of my Android device and help me automate tapping the login button"
 
-```bash
-npm install -g appium
-appium driver install uiautomator2  # For Android
-appium driver install xcuitest      # For iOS
-```
+"Initialize an iOS simulator session and test the sign-up flow in my app"
 
-## Basic Usage
+"Generate test scripts for my mobile app automation"
 
-### Starting the MCP-Appium Server
+---
 
-```bash
-# If installed globally
+**Status**: ✅ Production Ready | **Version**: 1.2.2 | **Protocol**: MCP 2024-11-05
 mcp-appium-visual
 
 # If installed locally
+
 npx mcp-appium-visual
 
 # Or via the npm script in your project
+
 npm run start
-```
+
+````
 
 This starts the MCP server, which listens for client connections.
 
@@ -112,7 +118,7 @@ async function simpleTest() {
 }
 
 simpleTest().catch(console.error);
-```
+````
 
 Run the example:
 

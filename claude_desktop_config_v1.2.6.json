@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "mcp-appium-visual": {
+      "command": "npx",
+      "args": ["mcp-appium-visual@1.2.6"],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=8192"
+      }
+    },
+    "mcp-appium-visual-with-external-server": {
+      "command": "npx",
+      "args": [
+        "mcp-appium-visual@1.2.6",
+        "--appium-url",
+        "http://localhost:4723"
+      ],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=8192"
+      }
+    }
+  }
+}

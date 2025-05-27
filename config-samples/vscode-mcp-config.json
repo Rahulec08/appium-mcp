@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "mobile-automation": {
+      "name": "Mobile Automation",
+      "description": "Mobile testing with Appium and visual recovery",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-appium-visual",
+        "--port",
+        "7000",
+        "--transport",
+        "http"
+      ],
+      "connectTo": {
+        "host": "localhost",
+        "port": 7000
+      }
+    }
+  }
+}

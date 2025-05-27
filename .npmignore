@@ -1,0 +1,29 @@
+# Source files
+src/
+
+# Examples
+examples/
+
+# Test screenshots
+test-screenshots/
+
+# Configuration files
+tsconfig.json
+.eslintrc.js
+.gitignore
+.git
+
+# Editor directories
+.vscode/
+.idea/
+
+# Misc
+*.log
+*.swp
+.DS_Store
+claude-desktop-config.sample.json
+node_modules/
+temp/
+
+# Keep dist
+!dist/

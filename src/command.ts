@@ -15,7 +15,8 @@ const __dirname = path.dirname(__filename);
 
 // Command options
 const commands = {
-  start: "Start the MCP-Appium server (default)",
+  start: "Start the MCP-Appium server only (default)",
+  "start-with-appium": "Start both Appium and MCP-Appium servers",
   cli: "Start the interactive CLI for mobile testing",
   help: "Show this help message",
   version: "Show version information",
@@ -24,6 +25,7 @@ const commands = {
 // Parse command line arguments
 const args = process.argv.slice(2);
 const command = args.length > 0 ? args[0].toLowerCase() : "start";
+const additionalArgs = args.slice(1); // Get all arguments after the command
 
 // Get package version
 const packageJsonPath = path.resolve(__dirname, "../package.json");
@@ -38,17 +40,44 @@ function showHelp() {
     `MCP-Appium - Model Context Protocol server for Appium mobile automation`
   );
   console.log(`Version: ${version}\n`);
-  console.log("Usage: mcp-appium [command]\n");
+  console.log("Usage: mcp-appium [command] [options]\n");
   console.log("Commands:");
 
   Object.entries(commands).forEach(([cmd, description]) => {
-    console.log(`  ${cmd.padEnd(10)} ${description}`);
+    console.log(`  ${cmd.padEnd(18)} ${description}`);
   });
 
+  console.log("\nOptions:");
+  console.log(
+    "  --port <number>       Set the MCP server port (default: 7000 for HTTP, stdio for stdio)"
+  );
+  console.log(
+    "  --transport <type>    Set transport type: 'stdio' or 'http' (default: stdio)"
+  );
+  console.log(
+    "  --host <string>       Set the MCP server host (default: localhost)"
+  );
+  console.log(
+    "  --appium-port <num>   Set the Appium server port (default: 4723)"
+  );
+  console.log(
+    "  --log-level <level>   Set log level: debug, info, warn, error (default: info)"
+  );
+
   console.log("\nExamples:");
-  console.log("  mcp-appium         Start the MCP-Appium server");
-  console.log("  mcp-appium cli     Start the interactive CLI");
-  console.log("  mcp-appium help    Show this help message");
+  console.log(
+    "  mcp-appium                          Start MCP server with stdio transport"
+  );
+  console.log(
+    "  mcp-appium --transport http --port 7000  Start MCP server with HTTP transport"
+  );
+  console.log(
+    "  mcp-appium start-with-appium        Start both Appium and MCP servers"
+  );
+  console.log(
+    "  mcp-appium cli                      Start the interactive CLI"
+  );
+  console.log("  mcp-appium help                     Show this help message");
 }
 
 /**
@@ -89,11 +118,15 @@ function executeProcess(filePath: string, args: string[] = []) {
 // Execute the appropriate command
 switch (command) {
   case "start":
-    executeProcess(path.resolve(__dirname, "launcher.js"));
+    executeProcess(path.resolve(__dirname, "index.js"), additionalArgs);
+    break;
+
+  case "start-with-appium":
+    executeProcess(path.resolve(__dirname, "launcher.js"), additionalArgs);
     break;
 
   case "cli":
-    executeProcess(path.resolve(__dirname, "cli.js"));
+    executeProcess(path.resolve(__dirname, "cli.js"), additionalArgs);
     break;
 
   case "help":
@@ -107,7 +140,12 @@ switch (command) {
     break;
 
   default:
-    console.error(`Unknown command: ${command}`);
-    showHelp();
-    process.exit(1);
+    // If the command starts with a dash, it's probably an argument for the default command
+    if (command.startsWith("-")) {
+      executeProcess(path.resolve(__dirname, "index.js"), args);
+    } else {
+      console.error(`Unknown command: ${command}`);
+      showHelp();
+      process.exit(1);
+    }
 }

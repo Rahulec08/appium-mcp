@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mcp-appium-visual": {
+      "command": "node",
+      "args": ["/Users/rahulsharma/AILearning/mcp-appium/dist/cli-simple.js"],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=4096"
+      }
+    }
+  }
+}

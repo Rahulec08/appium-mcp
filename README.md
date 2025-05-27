@@ -12,6 +12,10 @@ The server integrates seamlessly with the Model Context Protocol ecosystem, allo
 - 🌐 Deep linking and app navigation
 - 📸 Screenshot and UI analysis capabilities
 - 🔄 Visual recovery for handling UI changes and element locator failures
+- 🔎 OCR-based text recognition for finding text on screen
+- 🖼️ Template matching for finding UI elements visually
+- 📊 Image comparison for detecting UI changes
+- 📱 Enhanced scrolling using W3C Actions API
 - 🛠️ Interactive CLI mode for quick testing
 - ⚡ NPX support for easy integration with other MCP servers
 
@@ -81,26 +85,43 @@ Here's the Claude Desktop configuration to use the MCP-Appium-Visual server:
     "mobile-automation": {
       "command": "npx",
       "args": ["-y", "mcp-appium-visual"]
-    },
-    "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp@latest"]
     }
   }
 }
 ```
 
-Alternative configuration using stdio transport:
+**Note**: The default configuration runs only the MCP server via STDIO transport. Appium should be started separately by your client or testing environment. This is the recommended setup for Claude Desktop integration.
+
+If you need both Appium and MCP server to start together, use:
 
 ```json
 {
-  "servers": [
-    {
-      "name": "MCP-Appium-Visual",
-      "transport": "stdio",
-      "command": "mcp-appium-visual"
+  "mcpServers": {
+    "mobile-automation": {
+      "command": "npx",
+      "args": ["-y", "mcp-appium-visual", "start-with-appium"]
     }
-  ]
+  }
+}
+```
+
+Alternative configuration using HTTP transport (useful for debugging):
+
+```json
+{
+  "mcpServers": {
+    "mobile-automation": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-appium-visual",
+        "--transport",
+        "http",
+        "--port",
+        "7000"
+      ]
+    }
+  }
 }
 ```
 
@@ -239,3 +260,107 @@ ISC
 ## Support
 
 For issues, questions, or feature requests, please open an issue on the GitHub repository.
+
+## Visual Recovery Features
+
+MCP-Appium-Visual includes powerful capabilities to handle situations where traditional element locators fail:
+
+### OCR-Based Text Recognition
+
+Find and interact with text on screen regardless of the underlying UI structure:
+
+```javascript
+// Find text on the screen
+const textLocation = await client.tools["find-text-in-screen"]({
+  text: "Welcome to the app",
+  minConfidence: 0.7,
+});
+
+// Interact with the found text
+if (textLocation) {
+  await client.tools["tap"]({ x: textLocation.x, y: textLocation.y });
+}
+```
+
+### Template Matching
+
+Locate UI elements by matching them with template images:
+
+```javascript
+const buttonLocation = await client.tools["find-image-in-screen"]({
+  templatePath: "./assets/login-button.png",
+  threshold: 0.8,
+});
+```
+
+### Visual Element Detection
+
+Detect UI elements like buttons, text fields, and checkboxes based on their visual appearance:
+
+```javascript
+const elements = await client.tools["detect-ui-elements"]({
+  elementType: "button",
+});
+```
+
+### Enhanced Scrolling
+
+More reliable scrolling operations using the W3C Actions API with fallback mechanisms:
+
+```javascript
+// Scroll down half the screen height
+await client.tools["scroll-screen"]({
+  direction: "down",
+  distance: 0.5,
+});
+```
+
+## MCP Client Compatibility
+
+MCP-Appium-Visual is designed to work with any MCP-compatible client, including:
+
+- **Claude Desktop:** Run mobile automation directly from Claude desktop application
+- **VS Code Extensions:** Integrate with VS Code MCP extensions and AI assistants
+- **Custom MCP Clients:** Connect any custom MCP client to the server
+- **Command Line Interface:** Run tests and interact with devices directly from the terminal
+
+For detailed client integration instructions, see the [MCP Client Integration Guide](MCP_CLIENT_INTEGRATION.md).
+
+### Quick Setup for Common Clients
+
+#### Claude Desktop
+
+```json
+{
+  "mcpServers": {
+    "mobile-automation": {
+      "command": "npx",
+      "args": ["-y", "mcp-appium-visual", "--transport", "http"],
+      "connectTo": {
+        "host": "localhost",
+        "port": 7000
+      }
+    }
+  }
+}
+```
+
+#### VS Code
+
+Create or update `.vscode/mcp-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mobile-automation": {
+      "name": "Mobile Testing",
+      "command": "npx",
+      "args": ["-y", "mcp-appium-visual", "--transport", "http"],
+      "connectTo": {
+        "host": "localhost",
+        "port": 7000
+      }
+    }
+  }
+}
+```

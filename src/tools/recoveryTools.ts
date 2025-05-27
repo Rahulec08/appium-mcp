@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { AppiumHelper, AppiumError } from "../lib/appium/appiumHelper.js";
+import { AppiumHelper } from "../lib/appium/appiumHelper.js";
+import { AppiumError } from "../lib/appium/appiumError.js";
 import * as path from "path";
 import * as fs from "fs";
 // Import our new image processing utilities

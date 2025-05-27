@@ -1,7 +1,8 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import sharp from "sharp";
-import * as Jimp from "jimp";
+// Import both the Jimp class and functions from our ESM wrapper
+import { Jimp, intToRGBA } from "./jimp-esm.js";
 import * as Tesseract from "tesseract.js";
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
@@ -65,12 +66,10 @@ export class ImageProcessor {
           // Calculate pixel differences in the current window
           for (let ty = 0; ty < templateHeight; ty += 2) {
             for (let tx = 0; tx < templateWidth; tx += 2) {
-              const screenshotPixel = Jimp.intToRGBA(
+              const screenshotPixel = intToRGBA(
                 screenshot.getPixelColor(x + tx, y + ty)
               );
-              const templatePixel = Jimp.intToRGBA(
-                template.getPixelColor(tx, ty)
-              );
+              const templatePixel = intToRGBA(template.getPixelColor(tx, ty));
 
               // Calculate RGB difference
               diff += Math.abs(screenshotPixel.r - templatePixel.r);
@@ -387,16 +386,14 @@ export class ImageProcessor {
 
       for (let y = 0; y < height - scanStep; y += scanStep) {
         for (let x = 0; x < width - scanStep; x += scanStep) {
-          const centerColor = Jimp.intToRGBA(jimpImg.getPixelColor(x, y));
+          const centerColor = intToRGBA(jimpImg.getPixelColor(x, y));
           let isRectangle = true;
           let right = x;
           let bottom = y;
 
           // Look for horizontal edge
           while (right < width - 1) {
-            const rightColor = Jimp.intToRGBA(
-              jimpImg.getPixelColor(right + 1, y)
-            );
+            const rightColor = intToRGBA(jimpImg.getPixelColor(right + 1, y));
             if (this.colorDifference(centerColor, rightColor) > 30) {
               break;
             }
@@ -406,9 +403,7 @@ export class ImageProcessor {
 
           // Look for vertical edge
           while (bottom < height - 1) {
-            const bottomColor = Jimp.intToRGBA(
-              jimpImg.getPixelColor(x, bottom + 1)
-            );
+            const bottomColor = intToRGBA(jimpImg.getPixelColor(x, bottom + 1));
             if (this.colorDifference(centerColor, bottomColor) > 30) {
               break;
             }

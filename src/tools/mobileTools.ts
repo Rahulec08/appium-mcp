@@ -1,13 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import {
-  AppiumHelper,
-  AppiumCapabilities,
-} from "../lib/appium/appiumHelper.js";
+import { AppiumHelper } from "../lib/appium/appiumHelper.js";
+import { AppiumCapabilities } from "../lib/appium/appiumTypes.js";
 import * as fs from "fs/promises";
 
 // Shared Appium instance for reuse across tool calls
 let appiumHelper: AppiumHelper | null = null;
+
+// Global configuration that can be set from server config
+let globalAppiumUrl: string | undefined;
 
 /**
  * Get the Appium helper, validating the session if it exists
@@ -42,7 +43,14 @@ async function getValidAppiumHelper(): Promise<AppiumHelper | null> {
 /**
  * Register mobile automation tools with the MCP server
  */
-export function registerMobileTools(server: McpServer) {
+export function registerMobileTools(
+  server: McpServer,
+  config?: { appiumUrl?: string }
+) {
+  // Store the appium URL from config for use in tools
+  if (config?.appiumUrl) {
+    globalAppiumUrl = config.appiumUrl;
+  }
   // Tool: Initialize Appium driver
   server.tool(
     "initialize-appium",
@@ -126,7 +134,10 @@ export function registerMobileTools(server: McpServer) {
         appiumHelper = new AppiumHelper(
           params.screenshotDir || "./screenshots"
         );
-        await appiumHelper.initializeDriver(capabilities, params.appiumUrl);
+
+        // Use appiumUrl from params, or fall back to global config
+        const appiumUrl = params.appiumUrl || globalAppiumUrl;
+        await appiumHelper.initializeDriver(capabilities, appiumUrl);
 
         return {
           content: [

@@ -11,6 +11,33 @@ Before publishing, make sure to:
 3. Validate the package structure
 4. Check that all bin files have correct permissions
 5. Verify the package works correctly when installed
+6. Check that the Jimp ESM imports are working correctly
+
+## Important Module Compatibility Notes
+
+### Jimp Module Fix
+
+The package uses Jimp for image processing, which requires special handling for proper TypeScript and ESM compatibility:
+
+1. We've created wrapper modules in `/src/lib/vision/`:
+
+   - `jimp-esm.js` - ES module wrapper
+   - `jimp-fixed.ts` - TypeScript wrapper
+
+2. All imports of Jimp should use these wrappers instead of importing directly:
+
+```typescript
+// CORRECT - Use the wrapper
+import { Jimp, intToRGBA } from "./jimp-esm.js";
+
+// INCORRECT - Direct import may cause TypeScript errors
+import * as Jimp from "jimp";
+```
+
+3. When making changes to image processing code, always verify that:
+   - TypeScript compilation succeeds
+   - Both ESM and CommonJS usage work
+   - The image processing functions work correctly at runtime
 
 ## Step 1: Validate the Package
 
@@ -115,3 +142,70 @@ After publishing, remember to:
 1. Create a Git tag for the release
 2. Update the release notes/changelog
 3. Update any documentation that references the package version
+
+## Visual Recovery Features
+
+The MCP-Appium Visual package includes enhanced visual features that should be tested before publishing:
+
+### Key Visual Features
+
+1. **Image Processing**:
+
+   - Template matching (finding smaller images within larger ones)
+   - OCR (text recognition)
+   - Image comparison
+   - UI element detection
+
+2. **Enhanced Scrolling**:
+   - W3C Actions API support
+   - Fallback to TouchActions for older Appium versions
+   - Directional scrolling with adjustable distance
+
+### Testing Visual Features
+
+Before publishing, test the visual features using the provided examples:
+
+```bash
+# Test visual recovery features
+npx ts-node examples/visual-recovery-test.ts
+
+# Test image processing
+npx ts-node examples/visual-processing-test.ts
+
+# Test the MCP visual recovery integration
+npx ts-node examples/mcp-visual-recovery-test.ts
+```
+
+### Platform Compatibility
+
+Visual features should work across platforms:
+
+1. **Android**:
+
+   - Test on both emulators and physical devices
+   - Test with different Android versions (especially 10+)
+   - Verify both UiAutomator2 and Espresso drivers
+
+2. **iOS**:
+   - Test on both simulators and physical devices
+   - Test with different iOS versions
+   - Verify XCUITest driver compatibility
+
+### Common Issues to Watch For
+
+1. **Jimp Import Issues**:
+
+   - ESM vs CommonJS incompatibilities
+   - TypeScript definition problems
+   - Runtime "Jimp.Jimp is not a constructor" errors
+
+2. **Scrolling Problems**:
+
+   - Different behavior between Android and iOS
+   - W3C Actions API inconsistencies
+   - Coordinate calculation issues
+
+3. **Image Processing Errors**:
+   - Tesseract.js integration issues
+   - Memory usage with large images
+   - Temporary file handling

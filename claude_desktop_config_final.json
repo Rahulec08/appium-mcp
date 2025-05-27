@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mcp-appium-visual": {
+      "command": "npx",
+      "args": ["mcp-appium-visual@1.3.0"],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=4096"
+      }
+    }
+  }
+}

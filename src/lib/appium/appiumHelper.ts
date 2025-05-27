@@ -8,33 +8,9 @@ import {
 } from "webdriverio";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { AppiumError } from "./appiumError.js";
 
-/**
- * Custom error class for Appium operations
- */
-export class AppiumError extends Error {
-  constructor(message: string, public readonly cause?: Error) {
-    super(message);
-    this.name = "AppiumError";
-  }
-}
-
-/**
- * Appium capabilities for different platforms
- */
-export interface AppiumCapabilities {
-  platformName: "Android" | "iOS";
-  deviceName: string;
-  udid?: string;
-  automationName?: "UiAutomator2" | "XCUITest";
-  app?: string;
-  appPackage?: string;
-  appActivity?: string;
-  bundleId?: string;
-  noReset?: boolean;
-  fullReset?: boolean;
-  [key: string]: any;
-}
+import { AppiumCapabilities } from "./appiumTypes.js";
 
 /**
  * Helper class for Appium operations
@@ -1623,6 +1599,7 @@ export class AppiumHelper {
 
   /**
    * Scroll using predefined directions - scrollDown, scrollUp, scrollLeft, scrollRight
+   * Implemented using W3C Actions API for better compatibility with modern Appium versions
    *
    * @param direction Direction to scroll: "down", "up", "left", "right"
    * @param distance Optional percentage of screen to scroll (0.0-1.0), defaults to 0.5
@@ -1643,42 +1620,111 @@ export class AppiumHelper {
 
       let startX, startY, endX, endY;
 
+      // Calculate start and end points based on direction and screen size
       switch (direction) {
         case "down":
           startX = midX;
-          startY = size.height * 0.3;
+          startY = size.height * 0.7; // Start near bottom
           endX = midX;
-          endY = size.height * (0.3 + distance);
+          endY = size.height * (0.7 - distance); // Move up
           break;
         case "up":
           startX = midX;
-          startY = size.height * 0.7;
+          startY = size.height * 0.3; // Start near top
           endX = midX;
-          endY = size.height * (0.7 - distance);
+          endY = size.height * (0.3 + distance); // Move down
           break;
         case "right":
-          startX = size.width * 0.3;
+          startX = size.width * 0.7; // Start near right edge
           startY = midY;
-          endX = size.width * (0.3 + distance);
+          endX = size.width * (0.7 - distance); // Move left
           endY = midY;
           break;
         case "left":
-          startX = size.width * 0.7;
+          startX = size.width * 0.3; // Start near left edge
           startY = midY;
-          endX = size.width * (0.7 - distance);
+          endX = size.width * (0.3 + distance); // Move right
           endY = midY;
           break;
       }
 
-      await this.swipe(startX, startY, endX, endY, 800);
+      // Use W3C Actions API - compatible with newer Appium versions
+      await this.driver.performActions([
+        {
+          type: "pointer",
+          id: "finger1",
+          parameters: { pointerType: "touch" },
+          actions: [
+            {
+              type: "pointerMove",
+              duration: 0,
+              x: Math.round(startX),
+              y: Math.round(startY),
+            },
+            { type: "pointerDown", button: 0 },
+            { type: "pause", duration: 100 },
+            {
+              type: "pointerMove",
+              duration: 600,
+              x: Math.round(endX),
+              y: Math.round(endY),
+            },
+            { type: "pointerUp", button: 0 },
+          ],
+        },
+      ]);
+
+      // Short pause after scrolling to let the UI settle
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       return true;
     } catch (error) {
-      throw new AppiumError(
-        `Failed to scroll ${direction}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
+      // Try fallback method using touchAction if W3C actions fail
+      try {
+        console.log("W3C Actions failed, trying TouchAction fallback");
+        const size = await this.driver.getWindowSize();
+        const midX = size.width / 2;
+        const midY = size.height / 2;
+
+        let startX, startY, endX, endY;
+
+        switch (direction) {
+          case "down":
+            startX = midX;
+            startY = size.height * 0.7;
+            endX = midX;
+            endY = size.height * (0.7 - distance);
+            break;
+          case "up":
+            startX = midX;
+            startY = size.height * 0.3;
+            endX = midX;
+            endY = size.height * (0.3 + distance);
+            break;
+          case "right":
+            startX = size.width * 0.7;
+            startY = midY;
+            endX = size.width * (0.7 - distance);
+            endY = midY;
+            break;
+          case "left":
+            startX = size.width * 0.3;
+            startY = midY;
+            endX = size.width * (0.3 + distance);
+            endY = midY;
+            break;
+        }
+
+        await this.swipe(startX, startY, endX, endY, 800);
+        return true;
+      } catch (fallbackError) {
+        throw new AppiumError(
+          `Failed to scroll ${direction} (both W3C and fallback methods failed): ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          error instanceof Error ? error : undefined
+        );
+      }
     }
   }
 

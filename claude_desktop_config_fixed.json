@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mobile-automation": {
+      "command": "npx",
+      "args": ["-y", "mcp-appium-visual@1.2.5"]
+    }
+  }
+}

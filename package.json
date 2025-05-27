@@ -1,21 +1,47 @@
 {
   "name": "mcp-appium-visual",
-  "version": "1.2.0",
+  "version": "1.3.3",
   "description": "MCP Server for Appium mobile automation with visual recovery",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./server": {
+      "import": "./dist/server.js",
+      "require": "./dist/server.js",
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    },
+    "./appium": {
+      "import": "./dist/lib/appium/appiumHelper.js",
+      "require": "./dist/lib/appium/appiumHelper.js",
+      "types": "./dist/lib/appium/appiumHelper.d.ts",
+      "default": "./dist/lib/appium/appiumHelper.js"
+    },
+    "./vision": {
+      "import": "./dist/lib/vision/imageProcessor.js",
+      "require": "./dist/lib/vision/imageProcessor.js",
+      "types": "./dist/lib/vision/imageProcessor.d.ts",
+      "default": "./dist/lib/vision/imageProcessor.js"
+    },
+    "./jimp": {
+      "import": "./dist/lib/vision/jimp-esm.js",
+      "default": "./dist/lib/vision/jimp-esm.js"
     }
   },
   "type": "module",
   "bin": {
-    "mcp-appium-visual": "./dist/command.js",
+    "mcp-appium-visual": "./dist/cli-simple.js",
     "mcp-appium-visual-server": "./dist/launcher.js",
     "mcp-appium-visual-cli": "./dist/cli.js",
-    "mcp-appium": "./dist/npx-entry.js",
+    "mcp-appium": "./dist/cli-simple.js",
     "mcp-appium-cjs": "./dist/npx-entry.cjs"
   },
   "scripts": {
@@ -28,7 +54,7 @@
     "prepare": "npm run build && npm run set-permissions",
     "launch": "node dist/launcher.js",
     "cli": "node dist/cli.js",
-    "copy-cjs": "cp src/npx-entry.cjs src/index.cjs dist/",
+    "copy-cjs": "cp src/npx-entry.cjs src/index.cjs src/index-esm.js dist/ && mkdir -p dist/lib/vision && cp src/lib/vision/jimp-esm.js src/lib/vision/jimp-esm.d.ts dist/lib/vision/",
     "set-permissions": "chmod +x dist/*.js dist/*.cjs 2>/dev/null || true",
     "prepublishOnly": "npm run clean && npm run build && npm run set-permissions"
   },
@@ -44,7 +70,11 @@
     "claude-mcp",
     "vscode-mcp"
   ],
-  "author": "",
+  "author": {
+    "name": "Rahul Sharma",
+    "email": "rahulec08@example.com",
+    "url": "https://github.com/rahulec08"
+  },
   "license": "ISC",
   "repository": {
     "type": "git",
@@ -77,6 +107,7 @@
     "appium-xcuitest-driver": "^5.11.0",
     "applesign": "5.0.0",
     "archiver": "^5.3.1",
+    "commander": "^13.1.0",
     "ios-mobileprovision-finder": "1.2.1",
     "jimp": "^1.6.0",
     "pixelmatch": "^7.1.0",

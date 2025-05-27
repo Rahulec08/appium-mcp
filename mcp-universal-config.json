@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "mobile-automation": {
+      "name": "Mobile Automation Tools",
+      "description": "Mobile testing with Appium and visual recovery",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-appium-visual",
+        "--port",
+        "7000",
+        "--transport",
+        "http"
+      ],
+      "connectTo": {
+        "host": "localhost",
+        "port": 7000
+      },
+      "capabilities": {
+        "mobile": {
+          "version": "1.2.1",
+          "description": "Mobile automation testing with Appium",
+          "supportedDevices": ["Android", "iOS"]
+        },
+        "vision": {
+          "version": "1.0.0",
+          "description": "Visual analysis and recovery features",
+          "supportedFeatures": ["OCR", "ImageComparison", "VisualRecovery"]
+        }
+      }
+    }
+  }
+}
