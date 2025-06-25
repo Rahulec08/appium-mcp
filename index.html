@@ -1,0 +1,2160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP-Appium | AI-Powered Mobile Automation</title>
+    <meta
+      name="description"
+      content="Model Context Protocol server for Appium mobile automation with AI-powered visual element detection and cross-platform support."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>"
+    />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://rahulec08.github.io/appium-mcp/" />
+    <meta
+      property="og:title"
+      content="MCP-Appium | AI-Powered Mobile Automation"
+    />
+    <meta
+      property="og:description"
+      content="Model Context Protocol server for Appium mobile automation with AI-powered visual element detection."
+    />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta
+      property="twitter:url"
+      content="https://rahulec08.github.io/appium-mcp/"
+    />
+    <meta
+      property="twitter:title"
+      content="MCP-Appium | AI-Powered Mobile Automation"
+    />
+    <meta
+      property="twitter:description"
+      content="Model Context Protocol server for Appium mobile automation with AI-powered visual element detection."
+    />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --primary-color: #2563eb;
+        --primary-dark: #1d4ed8;
+        --secondary-color: #10b981;
+        --accent-color: #f59e0b;
+        --text-primary: #1f2937;
+        --text-secondary: #6b7280;
+        --text-light: #9ca3af;
+        --bg-primary: #ffffff;
+        --bg-secondary: #f9fafb;
+        --bg-tertiary: #f3f4f6;
+        --border-color: #e5e7eb;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        line-height: 1.6;
+        color: var(--text-primary);
+        background-color: var(--bg-primary);
+        overflow-x: hidden;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+      }
+
+      /* Header */
+      .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border-color);
+        z-index: 1000;
+        transition: all 0.3s ease;
+      }
+
+      .header.scrolled {
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: var(--shadow-md);
+      }
+
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        text-decoration: none;
+      }
+
+      .logo-icon {
+        width: 2rem;
+        height: 2rem;
+        margin-right: 0.5rem;
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 2rem;
+        list-style: none;
+        align-items: center;
+      }
+
+      .nav-links a {
+        text-decoration: none;
+        color: var(--text-secondary);
+        font-weight: 500;
+        transition: color 0.3s ease;
+        position: relative;
+      }
+
+      .nav-links a:hover {
+        color: var(--primary-color);
+      }
+
+      .nav-links a::after {
+        content: "";
+        position: absolute;
+        bottom: -0.25rem;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: var(--primary-color);
+        transition: width 0.3s ease;
+      }
+
+      .nav-links a:hover::after {
+        width: 100%;
+      }
+
+      .github-btn {
+        background: var(--text-primary);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .github-btn:hover {
+        background: var(--primary-color);
+        transform: translateY(-1px);
+      }
+
+      /* Hero Section */
+      .hero {
+        padding: 8rem 0 4rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        opacity: 0.3;
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .hero h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        line-height: 1.1;
+      }
+
+      .hero .subtitle {
+        font-size: 1.25rem;
+        margin-bottom: 3rem;
+        opacity: 0.9;
+        font-weight: 400;
+      }
+
+      .cta-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 3rem;
+      }
+
+      .btn {
+        padding: 0.875rem 2rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+      }
+
+      .btn-primary {
+        background: white;
+        color: var(--primary-color);
+      }
+
+      .btn-secondary {
+        background: transparent;
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+      }
+
+      .btn-primary:hover {
+        background: var(--bg-secondary);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: white;
+      }
+
+      /* Stats */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      .stat {
+        text-align: center;
+      }
+
+      .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        display: block;
+      }
+
+      .stat-label {
+        font-size: 0.875rem;
+        opacity: 0.8;
+        margin-top: 0.25rem;
+      }
+
+      /* Main Content */
+      .main-content {
+        background: var(--bg-primary);
+      }
+
+      .section {
+        padding: 5rem 0;
+      }
+
+      .section-header {
+        text-align: center;
+        margin-bottom: 4rem;
+      }
+
+      .section-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+      }
+
+      .section-subtitle {
+        font-size: 1.125rem;
+        color: var(--text-secondary);
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      /* Installation Section */
+      .installation {
+        background: var(--bg-secondary);
+      }
+
+      .install-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        align-items: center;
+      }
+
+      .install-content h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+      }
+
+      .install-content p {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+      }
+
+      .install-commands {
+        background: var(--text-primary);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .install-commands::before {
+        content: "";
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        width: 0.75rem;
+        height: 0.75rem;
+        background: #ff5f56;
+        border-radius: 50%;
+        box-shadow: 1.25rem 0 0 #ffbd2e, 2.5rem 0 0 #27ca3f;
+      }
+
+      .command-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        margin-top: 1rem;
+      }
+
+      .tab {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        border: none;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: background 0.3s ease;
+      }
+
+      .tab.active {
+        background: var(--primary-color);
+      }
+
+      .command {
+        display: none;
+        font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+          "Courier New", monospace;
+        color: #50fa7b;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        position: relative;
+      }
+
+      .command.active {
+        display: block;
+      }
+
+      .copy-btn {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: none;
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        font-size: 0.75rem;
+        transition: background 0.3s ease;
+      }
+
+      .copy-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      /* Features Grid */
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+      }
+
+      .feature-card {
+        background: var(--bg-primary);
+        padding: 2rem;
+        border-radius: 1rem;
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .feature-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+      }
+
+      .feature-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-xl);
+        border-color: var(--primary-color);
+      }
+
+      .feature-icon {
+        width: 3rem;
+        height: 3rem;
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        border-radius: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .feature-card h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+      }
+
+      .feature-card p {
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+
+      /* Code Example */
+      .code-showcase {
+        background: var(--bg-secondary);
+      }
+
+      .code-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        align-items: center;
+      }
+
+      .code-example {
+        background: var(--text-primary);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .code-example::before {
+        content: "";
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        width: 0.75rem;
+        height: 0.75rem;
+        background: #ff5f56;
+        border-radius: 50%;
+        box-shadow: 1.25rem 0 0 #ffbd2e, 2.5rem 0 0 #27ca3f;
+      }
+
+      .code-content {
+        margin-top: 2rem;
+        font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+          "Courier New", monospace;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: #f8f8f2;
+      }
+
+      .code-comment {
+        color: #6272a4;
+      }
+
+      .code-keyword {
+        color: #ff79c6;
+      }
+
+      .code-string {
+        color: #f1fa8c;
+      }
+
+      .code-function {
+        color: #50fa7b;
+      }
+
+      /* Documentation */
+      .docs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .doc-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 2rem;
+        transition: all 0.3s ease;
+        text-align: center;
+      }
+
+      .doc-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+        border-color: var(--primary-color);
+      }
+
+      .doc-icon {
+        width: 4rem;
+        height: 4rem;
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto 1.5rem;
+      }
+
+      .doc-card h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+      }
+
+      .doc-card p {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+      }
+
+      .doc-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s ease;
+      }
+
+      .doc-link:hover {
+        color: var(--primary-dark);
+      }
+
+      /* Footer */
+      .footer {
+        background: var(--text-primary);
+        color: white;
+        padding: 3rem 0 2rem;
+      }
+
+      .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 3rem;
+        margin-bottom: 2rem;
+      }
+
+      .footer-section h4 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+
+      .footer-links {
+        list-style: none;
+      }
+
+      .footer-links li {
+        margin-bottom: 0.5rem;
+      }
+
+      .footer-links a {
+        color: rgba(255, 255, 255, 0.7);
+        text-decoration: none;
+        transition: color 0.3s ease;
+      }
+
+      .footer-links a:hover {
+        color: white;
+      }
+
+      .footer-bottom {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 2rem;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      /* Mobile Menu */
+      .mobile-menu-btn {
+        display: none;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .nav-links {
+          display: none;
+        }
+
+        .mobile-menu-btn {
+          display: block;
+        }
+
+        .hero h1 {
+          font-size: 2.5rem;
+        }
+
+        .install-grid,
+        .code-grid {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+        }
+
+        .footer-content {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+        }
+
+        .cta-buttons {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      /* Animations */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-on-scroll {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: all 0.6s ease;
+      }
+
+      .animate-on-scroll.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header" id="header">
+      <nav class="nav container">
+        <a href="#" class="logo">
+          <div class="logo-icon">📱</div>
+          MCP-Appium
+        </a>
+        <ul class="nav-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#installation">Installation</a></li>
+          <li><a href="#examples">Examples</a></li>
+          <li><a href="#docs">Docs</a></li>
+        </ul>
+        <a
+          href="https://github.com/Rahulec08/appium-mcp"
+          class="github-btn"
+          target="_blank"
+        >
+          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+            />
+          </svg>
+          GitHub
+        </a>
+        <button class="mobile-menu-btn">☰</button>
+      </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content animate-on-scroll">
+          <h1>AI-Powered Mobile Automation</h1>
+          <p class="subtitle">
+            Seamlessly control Android & iOS devices through Appium with
+            intelligent visual element detection. Built for AI agents using
+            Model Context Protocol.
+          </p>
+          <div class="cta-buttons">
+            <a href="#installation" class="btn btn-primary"> 🚀 Get Started </a>
+            <a
+              href="https://github.com/Rahulec08/appium-mcp"
+              class="btn btn-secondary"
+              target="_blank"
+            >
+              📖 View on GitHub
+            </a>
+            <a
+              href="https://www.npmjs.com/package/mcp-appium-visual"
+              class="btn btn-secondary"
+              target="_blank"
+            >
+              📦 NPM Package
+            </a>
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <span class="stat-number">50+</span>
+              <span class="stat-label">MCP Tools</span>
+            </div>
+            <div class="stat">
+              <span class="stat-number">2</span>
+              <span class="stat-label">Platforms</span>
+            </div>
+            <div class="stat">
+              <span class="stat-number">100%</span>
+              <span class="stat-label">TypeScript</span>
+            </div>
+            <div class="stat">
+              <span class="stat-number">MIT</span>
+              <span class="stat-label">License</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Installation -->
+      <section id="installation" class="section installation">
+        <div class="container">
+          <div class="install-grid">
+            <div class="install-content animate-on-scroll">
+              <h3>Quick Installation</h3>
+              <p>
+                Get started with MCP-Appium in seconds. Choose your preferred
+                package manager and start automating mobile devices with
+                AI-powered capabilities.
+              </p>
+              <div class="cta-buttons">
+                <a
+                  href="https://www.npmjs.com/package/mcp-appium-visual"
+                  class="btn btn-primary"
+                  target="_blank"
+                >
+                  📦 View on NPM
+                </a>
+              </div>
+            </div>
+            <div class="install-commands animate-on-scroll">
+              <div class="command-tabs">
+                <button class="tab active" onclick="showCommand('npm')">
+                  npm
+                </button>
+                <button class="tab" onclick="showCommand('yarn')">yarn</button>
+                <button class="tab" onclick="showCommand('pnpm')">pnpm</button>
+              </div>
+              <div class="command active" id="npm-command">
+                <button
+                  class="copy-btn"
+                  onclick="copyToClipboard('npm install mcp-appium-visual')"
+                >
+                  Copy
+                </button>
+                <div>$ npm install mcp-appium-visual</div>
+              </div>
+              <div class="command" id="yarn-command">
+                <button
+                  class="copy-btn"
+                  onclick="copyToClipboard('yarn add mcp-appium-visual')"
+                >
+                  Copy
+                </button>
+                <div>$ yarn add mcp-appium-visual</div>
+              </div>
+              <div class="command" id="pnpm-command">
+                <button
+                  class="copy-btn"
+                  onclick="copyToClipboard('pnpm add mcp-appium-visual')"
+                >
+                  Copy
+                </button>
+                <div>$ pnpm add mcp-appium-visual</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features" class="section">
+        <div class="container">
+          <div class="section-header animate-on-scroll">
+            <h2 class="section-title">Powerful Features</h2>
+            <p class="section-subtitle">
+              Everything you need for modern mobile automation with AI
+              integration
+            </p>
+          </div>
+          <div class="features-grid">
+            <div class="feature-card animate-on-scroll">
+              <div class="feature-icon">🤖</div>
+              <h3>AI-Powered Automation</h3>
+              <p>
+                Advanced visual element detection and intelligent interaction
+                using computer vision and machine learning algorithms for robust
+                mobile automation.
+              </p>
+            </div>
+            <div class="feature-card animate-on-scroll">
+              <div class="feature-icon">📱</div>
+              <h3>Cross-Platform Support</h3>
+              <p>
+                Unified automation for both Android (ADB) and iOS (Xcode)
+                devices with consistent API and seamless platform switching.
+              </p>
+            </div>
+            <div class="feature-card animate-on-scroll">
+              <div class="feature-icon">🔗</div>
+              <h3>MCP Integration</h3>
+              <p>
+                Built on Model Context Protocol for seamless integration with AI
+                agents like Claude, enabling natural language automation.
+              </p>
+            </div>
+            <div class="feature-card animate-on-scroll">
+              <div class="feature-icon">🎯</div>
+              <h3>Visual Recovery</h3>
+              <p>
+                Automatic error recovery with visual element detection when
+                traditional locators fail, ensuring test stability and
+                reliability.
+              </p>
+            </div>
+            <div class="feature-card animate-on-scroll">
+              <div class="feature-icon">⚡</div>
+              <h3>High Performance</h3>
+              <p>
+                Optimized for speed with intelligent caching, parallel execution
+                capabilities, and efficient resource management.
+              </p>
+            </div>
+            <div class="feature-card animate-on-scroll">
+              <div class="feature-icon">🛠️</div>
+              <h3>Developer Friendly</h3>
+              <p>
+                Full TypeScript support, comprehensive documentation, extensive
+                examples, and intuitive API design for rapid development.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Code Example -->
+      <section id="examples" class="section code-showcase">
+        <div class="container">
+          <div class="code-grid">
+            <div class="animate-on-scroll">
+              <h3>Simple & Powerful API</h3>
+              <p>
+                Get started with just a few lines of code. Our intuitive API
+                makes mobile automation accessible to developers of all skill
+                levels.
+              </p>
+              <div class="cta-buttons">
+                <a
+                  href="https://github.com/Rahulec08/appium-mcp/tree/main/examples"
+                  class="btn btn-primary"
+                  target="_blank"
+                >
+                  📚 View Examples
+                </a>
+              </div>
+            </div>
+            <div class="code-example animate-on-scroll">
+              <div class="code-content">
+                <div class="code-comment">// Initialize Appium with MCP</div>
+                <div>
+                  <span class="code-keyword">await</span>
+                  <span class="code-function">initializeAppium</span>({
+                </div>
+                <div>
+                  platformName: <span class="code-string">'Android'</span>,
+                </div>
+                <div>
+                  deviceName: <span class="code-string">'emulator-5554'</span>,
+                </div>
+                <div>
+                  appPackage: <span class="code-string">'com.example.app'</span>
+                </div>
+                <div>});</div>
+                <div></div>
+                <div class="code-comment">
+                  // AI-powered element interaction
+                </div>
+                <div>
+                  <span class="code-keyword">await</span>
+                  <span class="code-function">smartTap</span>(<span
+                    class="code-string"
+                    >'Login Button'</span
+                  >);
+                </div>
+                <div></div>
+                <div class="code-comment">// Visual element recovery</div>
+                <div>
+                  <span class="code-keyword">await</span>
+                  <span class="code-function">visualElementRecovery</span>({
+                </div>
+                <div>
+                  screenshotPath:
+                  <span class="code-string">'./screenshot.png'</span>,
+                </div>
+                <div>
+                  elementType: <span class="code-string">'button'</span>,
+                </div>
+                <div>
+                  expectedText: <span class="code-string">'Submit'</span>
+                </div>
+                <div>});</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Documentation -->
+      <section id="docs" class="section">
+        <div class="container">
+          <div class="section-header animate-on-scroll">
+            <h2 class="section-title">Documentation & Resources</h2>
+            <p class="section-subtitle">
+              Everything you need to get started and master mobile automation
+            </p>
+          </div>
+          <div class="docs-grid">
+            <div class="doc-card animate-on-scroll">
+              <div class="doc-icon">📖</div>
+              <h3>API Documentation</h3>
+              <p>
+                Comprehensive API reference with detailed examples and best
+                practices.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp#api-documentation"
+                class="doc-link"
+                target="_blank"
+              >
+                Read Docs →
+              </a>
+            </div>
+            <div class="doc-card animate-on-scroll">
+              <div class="doc-icon">🎓</div>
+              <h3>Examples</h3>
+              <p>
+                Ready-to-run examples for common automation scenarios and
+                patterns.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/tree/main/examples"
+                class="doc-link"
+                target="_blank"
+              >
+                Browse Examples →
+              </a>
+            </div>
+            <div class="doc-card animate-on-scroll">
+              <div class="doc-icon">🚀</div>
+              <h3>Quick Start</h3>
+              <p>Step-by-step guide to get up and running in minutes.</p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/blob/main/QUICKSTART.md"
+                class="doc-link"
+                target="_blank"
+              >
+                Get Started →
+              </a>
+            </div>
+            <div class="doc-card animate-on-scroll">
+              <div class="doc-icon">🔧</div>
+              <h3>Configuration</h3>
+              <p>
+                Complete configuration reference for different environments.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/tree/main/config-samples"
+                class="doc-link"
+                target="_blank"
+              >
+                View Configs →
+              </a>
+            </div>
+            <div class="doc-card animate-on-scroll">
+              <div class="doc-icon">🧪</div>
+              <h3>Testing Guide</h3>
+              <p>
+                Comprehensive testing documentation with examples and best
+                practices.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/blob/main/TESTING.md"
+                class="doc-link"
+                target="_blank"
+              >
+                Testing Docs →
+              </a>
+            </div>
+            <div class="doc-card animate-on-scroll">
+              <div class="doc-icon">❓</div>
+              <h3>Support</h3>
+              <p>
+                Get help, report bugs, or request features through our GitHub
+                issues.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/issues"
+                class="doc-link"
+                target="_blank"
+              >
+                Get Support →
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-section">
+            <h4>Project</h4>
+            <ul class="footer-links">
+              <li>
+                <a href="https://github.com/Rahulec08/appium-mcp"
+                  >GitHub Repository</a
+                >
+              </li>
+              <li>
+                <a href="https://www.npmjs.com/package/mcp-appium-visual"
+                  >NPM Package</a
+                >
+              </li>
+              <li>
+                <a href="https://github.com/Rahulec08/appium-mcp/releases"
+                  >Releases</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://github.com/Rahulec08/appium-mcp/blob/main/LICENSE"
+                  >License</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h4>Documentation</h4>
+            <ul class="footer-links">
+              <li>
+                <a
+                  href="https://github.com/Rahulec08/appium-mcp/blob/main/README.md"
+                  >Getting Started</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://github.com/Rahulec08/appium-mcp/tree/main/examples"
+                  >Examples</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://github.com/Rahulec08/appium-mcp/blob/main/TESTING.md"
+                  >Testing Guide</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://github.com/Rahulec08/appium-mcp/tree/main/config-samples"
+                  >Configuration</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h4>Community</h4>
+            <ul class="footer-links">
+              <li>
+                <a href="https://github.com/Rahulec08/appium-mcp/issues"
+                  >Issues & Support</a
+                >
+              </li>
+              <li>
+                <a href="https://github.com/Rahulec08/appium-mcp/discussions"
+                  >Discussions</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://github.com/Rahulec08/appium-mcp/blob/main/CONTRIBUTING.md"
+                  >Contributing</a
+                >
+              </li>
+              <li><a href="https://github.com/Rahulec08">Author Profile</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>
+            &copy; 2025 MCP-Appium by
+            <a
+              href="https://github.com/Rahulec08"
+              style="color: var(--primary-color)"
+              >Rahulec08</a
+            >. Open source under MIT License.
+          </p>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // Header scroll effect
+      window.addEventListener("scroll", () => {
+        const header = document.getElementById("header");
+        if (window.scrollY > 50) {
+          header.classList.add("scrolled");
+        } else {
+          header.classList.remove("scrolled");
+        }
+      });
+
+      // Smooth scrolling for navigation links
+      document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+        anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute("href"));
+          if (target) {
+            const headerHeight = document.querySelector(".header").offsetHeight;
+            const targetPosition = target.offsetTop - headerHeight;
+            window.scrollTo({
+              top: targetPosition,
+              behavior: "smooth",
+            });
+          }
+        });
+      });
+
+      // Command tab switching
+      function showCommand(type) {
+        // Hide all commands
+        document.querySelectorAll(".command").forEach((cmd) => {
+          cmd.classList.remove("active");
+        });
+
+        // Remove active from all tabs
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.classList.remove("active");
+        });
+
+        // Show selected command
+        document.getElementById(type + "-command").classList.add("active");
+
+        // Activate selected tab
+        event.target.classList.add("active");
+      }
+
+      // Copy to clipboard functionality
+      function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function () {
+          // Show feedback
+          const button = event.target;
+          const originalText = button.textContent;
+          button.textContent = "Copied!";
+          button.style.background = "var(--secondary-color)";
+          setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = "rgba(255, 255, 255, 0.1)";
+          }, 2000);
+        });
+      }
+
+      // Animate elements on scroll
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px",
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+          }
+        });
+      }, observerOptions);
+
+      // Observe all elements with animate-on-scroll class
+      document.querySelectorAll(".animate-on-scroll").forEach((el) => {
+        observer.observe(el);
+      });
+
+      // Add loading animation
+      window.addEventListener("load", function () {
+        document.body.style.opacity = "1";
+        console.log("MCP-Appium website loaded successfully! 🚀");
+      });
+    </script>
+  </body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP-Appium Visual - AI-Powered Mobile Automation</title>
+    <meta
+      name="description"
+      content="Model Context Protocol server for Appium mobile automation with AI-powered visual element detection and cross-platform support."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>"
+    />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://rahulec08.github.io/appium-mcp/" />
+    <meta
+      property="og:title"
+      content="MCP-Appium Visual - AI-Powered Mobile Automation"
+    />
+    <meta
+      property="og:description"
+      content="Model Context Protocol server for Appium mobile automation with AI-powered visual element detection."
+    />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta
+      property="twitter:url"
+      content="https://rahulec08.github.io/appium-mcp/"
+    />
+    <meta
+      property="twitter:title"
+      content="MCP-Appium Visual - AI-Powered Mobile Automation"
+    />
+    <meta
+      property="twitter:description"
+      content="Model Context Protocol server for Appium mobile automation with AI-powered visual element detection."
+    />
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      /* Header */
+      .header {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 1rem 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .logo span {
+        margin-right: 0.5rem;
+        font-size: 2rem;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 2rem;
+        list-style: none;
+      }
+
+      .nav-links a {
+        text-decoration: none;
+        color: #333;
+        font-weight: 500;
+        transition: color 0.3s;
+      }
+
+      .nav-links a:hover {
+        color: #667eea;
+      }
+
+      /* Hero Section */
+      .hero {
+        padding: 4rem 0;
+        text-align: center;
+        color: white;
+      }
+
+      .hero h1 {
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
+        font-weight: 700;
+      }
+
+      .hero .subtitle {
+        font-size: 1.3rem;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+      }
+
+      .cta-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        padding: 0.75rem 2rem;
+        border: none;
+        border-radius: 50px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .btn-primary {
+        background: white;
+        color: #667eea;
+      }
+
+      .btn-secondary {
+        background: transparent;
+        color: white;
+        border: 2px solid white;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Main Content */
+      .main-content {
+        background: white;
+        margin-top: -2rem;
+        border-radius: 2rem 2rem 0 0;
+        padding: 3rem 0;
+      }
+
+      .section {
+        padding: 3rem 0;
+      }
+
+      .section h2 {
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        text-align: center;
+        color: #333;
+      }
+
+      /* NPM Package Info */
+      .npm-info {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 1rem;
+        padding: 2rem;
+        margin: 2rem 0;
+      }
+
+      .npm-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .install-command {
+        background: #1a1a1a;
+        color: #00ff00;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        font-family: "Courier New", monospace;
+        margin: 1rem 0;
+        position: relative;
+      }
+
+      .copy-btn {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #333;
+        color: white;
+        border: none;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        font-size: 0.8rem;
+      }
+
+      /* Features Grid */
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      .feature-card {
+        background: #f8f9fa;
+        padding: 2rem;
+        border-radius: 1rem;
+        border-left: 4px solid #667eea;
+        transition: transform 0.3s;
+      }
+
+      .feature-card:hover {
+        transform: translateY(-5px);
+      }
+
+      .feature-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+      }
+
+      /* Code Examples */
+      .code-example {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
+        overflow-x: auto;
+        font-family: "Courier New", monospace;
+        line-height: 1.4;
+      }
+
+      /* Quick Start */
+      .quick-start {
+        background: #f8f9fa;
+        padding: 2rem;
+        border-radius: 1rem;
+        margin: 2rem 0;
+      }
+
+      .step {
+        margin: 1rem 0;
+        padding: 1rem;
+        background: white;
+        border-radius: 0.5rem;
+        border-left: 4px solid #667eea;
+      }
+
+      .step-number {
+        background: #667eea;
+        color: white;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-weight: bold;
+      }
+
+      /* GitHub Stats */
+      .github-stats {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin: 2rem 0;
+        flex-wrap: wrap;
+      }
+
+      .github-badge {
+        display: inline-block;
+      }
+
+      /* Footer */
+      .footer {
+        background: #333;
+        color: white;
+        text-align: center;
+        padding: 2rem 0;
+      }
+
+      .footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-bottom: 1rem;
+      }
+
+      .footer-links a {
+        color: white;
+        text-decoration: none;
+      }
+
+      .footer-links a:hover {
+        color: #667eea;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .hero h1 {
+          font-size: 2.5rem;
+        }
+
+        .nav-links {
+          display: none;
+        }
+
+        .cta-buttons {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .npm-stats {
+          grid-template-columns: 1fr;
+        }
+
+        .github-stats {
+          flex-direction: column;
+          align-items: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <nav class="nav container">
+        <div class="logo">
+          <span>📱</span>
+          MCP-Appium Visual
+        </div>
+        <ul class="nav-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#installation">Installation</a></li>
+          <li><a href="#quickstart">Quick Start</a></li>
+          <li><a href="#docs">Documentation</a></li>
+          <li>
+            <a href="https://github.com/Rahulec08/appium-mcp" target="_blank"
+              >GitHub</a
+            >
+          </li>
+        </ul>
+      </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <h1>MCP-Appium Visual</h1>
+        <p class="subtitle">
+          AI-Powered Mobile Automation with Model Context Protocol
+        </p>
+        <div class="cta-buttons">
+          <a href="#installation" class="btn btn-primary"> 🚀 Get Started </a>
+          <a
+            href="https://github.com/Rahulec08/appium-mcp"
+            class="btn btn-secondary"
+            target="_blank"
+          >
+            📖 View on GitHub
+          </a>
+          <a
+            href="https://www.npmjs.com/package/mcp-appium-visual"
+            class="btn btn-secondary"
+            target="_blank"
+          >
+            📦 NPM Package
+          </a>
+        </div>
+
+        <!-- GitHub Stats Badges -->
+        <div class="github-stats">
+          <a
+            href="https://github.com/Rahulec08/appium-mcp"
+            class="github-badge"
+          >
+            <img
+              src="https://img.shields.io/github/stars/Rahulec08/appium-mcp?style=for-the-badge&logo=github&color=667eea"
+              alt="GitHub stars"
+            />
+          </a>
+          <a
+            href="https://github.com/Rahulec08/appium-mcp/fork"
+            class="github-badge"
+          >
+            <img
+              src="https://img.shields.io/github/forks/Rahulec08/appium-mcp?style=for-the-badge&logo=github&color=667eea"
+              alt="GitHub forks"
+            />
+          </a>
+          <a
+            href="https://github.com/Rahulec08/appium-mcp/issues"
+            class="github-badge"
+          >
+            <img
+              src="https://img.shields.io/github/issues/Rahulec08/appium-mcp?style=for-the-badge&logo=github&color=667eea"
+              alt="GitHub issues"
+            />
+          </a>
+          <a
+            href="https://github.com/Rahulec08/appium-mcp"
+            class="github-badge"
+          >
+            <img
+              src="https://img.shields.io/github/license/Rahulec08/appium-mcp?style=for-the-badge&logo=github&color=667eea"
+              alt="License"
+            />
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="container">
+        <!-- NPM Package Info -->
+        <section id="installation" class="section">
+          <div class="npm-info">
+            <h2>📦 NPM Package Information</h2>
+            <div class="npm-stats">
+              <div class="stat-card">
+                <div class="stat-number">
+                  <img
+                    src="https://img.shields.io/npm/v/mcp-appium-visual?style=flat-square"
+                    alt="NPM Version"
+                  />
+                </div>
+                <div>Latest Version</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number">
+                  <img
+                    src="https://img.shields.io/npm/dw/mcp-appium-visual?style=flat-square"
+                    alt="Weekly Downloads"
+                  />
+                </div>
+                <div>Weekly Downloads</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number">MIT</div>
+                <div>License</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number">TypeScript</div>
+                <div>Language</div>
+              </div>
+            </div>
+
+            <h3>📥 Installation</h3>
+            <div class="install-command">
+              npm install mcp-appium-visual
+              <button
+                class="copy-btn"
+                onclick="copyToClipboard('npm install mcp-appium-visual')"
+              >
+                Copy
+              </button>
+            </div>
+
+            <h3>🔄 Alternative Installation Methods</h3>
+            <div class="install-command">
+              yarn add mcp-appium-visual
+              <button
+                class="copy-btn"
+                onclick="copyToClipboard('yarn add mcp-appium-visual')"
+              >
+                Copy
+              </button>
+            </div>
+            <div class="install-command">
+              pnpm add mcp-appium-visual
+              <button
+                class="copy-btn"
+                onclick="copyToClipboard('pnpm add mcp-appium-visual')"
+              >
+                Copy
+              </button>
+            </div>
+
+            <h3>🔧 Development Installation</h3>
+            <div class="install-command">
+              git clone https://github.com/Rahulec08/appium-mcp.git
+              <button
+                class="copy-btn"
+                onclick="copyToClipboard('git clone https://github.com/Rahulec08/appium-mcp.git')"
+              >
+                Copy
+              </button>
+            </div>
+            <div class="install-command">
+              cd appium-mcp && npm install
+              <button
+                class="copy-btn"
+                onclick="copyToClipboard('cd appium-mcp && npm install')"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Features -->
+        <section id="features" class="section">
+          <h2>🚀 Key Features</h2>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon">🤖</div>
+              <h3>AI-Powered Automation</h3>
+              <p>
+                Advanced visual element detection and intelligent interaction
+                using computer vision and machine learning algorithms for robust
+                mobile automation.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">📱</div>
+              <h3>Cross-Platform Support</h3>
+              <p>
+                Unified automation for both Android (ADB) and iOS (Xcode)
+                devices with consistent API and seamless platform switching.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🔗</div>
+              <h3>MCP Integration</h3>
+              <p>
+                Built on Model Context Protocol for seamless integration with AI
+                agents like Claude, enabling natural language automation.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🎯</div>
+              <h3>Visual Recovery</h3>
+              <p>
+                Automatic error recovery with visual element detection when
+                traditional locators fail, ensuring test stability.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">⚡</div>
+              <h3>High Performance</h3>
+              <p>
+                Optimized for speed with intelligent caching, parallel execution
+                capabilities, and efficient resource management.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🛠️</div>
+              <h3>Developer Friendly</h3>
+              <p>
+                Full TypeScript support, comprehensive documentation, extensive
+                examples, and intuitive API design.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Quick Start -->
+        <section id="quickstart" class="section">
+          <h2>⚡ Quick Start Guide</h2>
+          <div class="quick-start">
+            <div class="step">
+              <span class="step-number">1</span>
+              <strong>Install the package</strong>
+              <div class="code-example">npm install mcp-appium-visual</div>
+            </div>
+
+            <div class="step">
+              <span class="step-number">2</span>
+              <strong>Configure MCP Server (Claude Desktop)</strong>
+              <div class="code-example">
+                { "mcpServers": { "mcp-appium": { "command": "node", "args":
+                ["./node_modules/mcp-appium-visual/dist/claude-desktop-server.js"],
+                "env": { "APPIUM_SERVER": "http://localhost:4723" } } } }
+              </div>
+            </div>
+
+            <div class="step">
+              <span class="step-number">3</span>
+              <strong>Initialize Appium Session</strong>
+              <div class="code-example">
+                import { initializeAppium } from 'mcp-appium-visual'; await
+                initializeAppium({ platformName: 'Android', deviceName:
+                'emulator-5554', appPackage: 'com.example.app', appActivity:
+                '.MainActivity', automationName: 'UiAutomator2' });
+              </div>
+            </div>
+
+            <div class="step">
+              <span class="step-number">4</span>
+              <strong>Start Automating with AI</strong>
+              <div class="code-example">
+                // AI-powered element interaction await smartTap('Login
+                Button'); // Visual element recovery await
+                visualElementRecovery({ screenshotPath: './screenshot.png',
+                elementType: 'button', expectedText: 'Submit' }); // Smart input
+                with visual validation await smartAction({ action: 'sendKeys',
+                selector: 'username_field', text: 'john.doe@example.com' });
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Use Cases -->
+        <section id="usecases" class="section">
+          <h2>💡 Use Cases & Applications</h2>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon">🧪</div>
+              <h3>Automated Testing</h3>
+              <p>
+                Create comprehensive test suites for mobile applications with
+                AI-assisted element detection and robust error handling.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🤝</div>
+              <h3>AI Agent Integration</h3>
+              <p>
+                Enable AI assistants like Claude to interact with mobile devices
+                for complex automation workflows and user assistance.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">📊</div>
+              <h3>QA Automation</h3>
+              <p>
+                Build robust quality assurance pipelines with visual validation,
+                smart recovery, and comprehensive reporting.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🔄</div>
+              <h3>CI/CD Integration</h3>
+              <p>
+                Seamlessly integrate mobile testing into continuous integration
+                workflows with automated device management.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Documentation -->
+        <section id="docs" class="section">
+          <h2>📚 Documentation & Resources</h2>
+          <div class="features-grid">
+            <div class="feature-card">
+              <h3>📖 API Documentation</h3>
+              <p>
+                Comprehensive API reference with detailed examples, best
+                practices, and troubleshooting guides.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp#api-documentation"
+                class="btn btn-primary"
+                style="margin-top: 1rem"
+                >View API Docs</a
+              >
+            </div>
+            <div class="feature-card">
+              <h3>🎓 Examples Repository</h3>
+              <p>
+                Ready-to-run examples for common automation scenarios, testing
+                patterns, and integration setups.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/tree/main/examples"
+                class="btn btn-primary"
+                style="margin-top: 1rem"
+                >Browse Examples</a
+              >
+            </div>
+            <div class="feature-card">
+              <h3>🚀 Quick Start Guide</h3>
+              <p>
+                Step-by-step guide to get up and running in minutes with
+                detailed setup instructions.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/blob/main/QUICKSTART.md"
+                class="btn btn-primary"
+                style="margin-top: 1rem"
+                >Get Started</a
+              >
+            </div>
+            <div class="feature-card">
+              <h3>🔧 Configuration Guide</h3>
+              <p>
+                Complete configuration reference for different environments and
+                use cases.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/tree/main/config-samples"
+                class="btn btn-primary"
+                style="margin-top: 1rem"
+                >View Configs</a
+              >
+            </div>
+            <div class="feature-card">
+              <h3>🧪 Testing Guide</h3>
+              <p>
+                Comprehensive testing documentation with examples and best
+                practices.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/blob/main/TESTING.md"
+                class="btn btn-primary"
+                style="margin-top: 1rem"
+                >Testing Docs</a
+              >
+            </div>
+            <div class="feature-card">
+              <h3>❓ Support & Issues</h3>
+              <p>
+                Get help, report bugs, or request features through our GitHub
+                issues tracker.
+              </p>
+              <a
+                href="https://github.com/Rahulec08/appium-mcp/issues"
+                class="btn btn-primary"
+                style="margin-top: 1rem"
+                >Get Support</a
+              >
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-links">
+          <a href="https://github.com/Rahulec08/appium-mcp"
+            >GitHub Repository</a
+          >
+          <a href="https://www.npmjs.com/package/mcp-appium-visual"
+            >NPM Package</a
+          >
+          <a href="https://github.com/Rahulec08/appium-mcp/blob/main/README.md"
+            >Documentation</a
+          >
+          <a href="https://github.com/Rahulec08/appium-mcp/issues"
+            >Issues & Support</a
+          >
+          <a href="https://github.com/Rahulec08">Author Profile</a>
+        </div>
+        <p>
+          &copy; 2025 MCP-Appium Visual by
+          <a href="https://github.com/Rahulec08" style="color: #667eea"
+            >Rahulec08</a
+          >. Open source under MIT License.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Smooth scrolling for navigation links
+      document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+        anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute("href"));
+          if (target) {
+            target.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }
+        });
+      });
+
+      // Copy to clipboard functionality
+      function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function () {
+          // Show feedback
+          const buttons = document.querySelectorAll(".copy-btn");
+          buttons.forEach((btn) => {
+            if (btn.onclick.toString().includes(text)) {
+              const originalText = btn.textContent;
+              btn.textContent = "Copied!";
+              btn.style.background = "#28a745";
+              setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = "#333";
+              }, 2000);
+            }
+          });
+        });
+      }
+
+      // Animate elements on scroll
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px",
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = "1";
+            entry.target.style.transform = "translateY(0)";
+          }
+        });
+      }, observerOptions);
+
+      // Observe feature cards for animation
+      document.querySelectorAll(".feature-card, .step").forEach((el) => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(20px)";
+        el.style.transition = "opacity 0.6s ease, transform 0.6s ease";
+        observer.observe(el);
+      });
+
+      // Add GitHub stats loading
+      window.addEventListener("load", function () {
+        // You can add dynamic GitHub stats loading here if needed
+        console.log("MCP-Appium Visual website loaded successfully!");
+      });
+    </script>
+  </body>
+</html>
