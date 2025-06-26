@@ -1,12 +1,6 @@
 # MCP Appium Server
 
 A Model Context Protocol (MCP) server implementation for mobile app automation using Appium.
-
-<iframe width="640" height="360"
-  src="https://www.youtube.com/embed/J_Y4NrEMlcI?autoplay=1&mute=1&loop=1"
-  frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
-</iframe>
-
 ## Prerequisites
 
 1. Node.js (v14 or higher)
