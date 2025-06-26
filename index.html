@@ -429,6 +429,25 @@
         background: rgba(255, 255, 255, 0.2);
       }
 
+      /* Video Demo */
+      .video-wrapper {
+        position: relative;
+        overflow: hidden;
+        padding-top: 56.25%; /* 16:9 Aspect Ratio */
+        border-radius: 0.75rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-xl);
+      }
+
+      .video-wrapper iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+
       /* Features Grid */
       .features-grid {
         display: grid;
@@ -615,6 +634,43 @@
         color: var(--primary-dark);
       }
 
+      /* AI Integration Config */
+      .integration-steps {
+        margin-top: 2rem;
+        text-align: left;
+      }
+
+      .step {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .step-number {
+        background: var(--primary-color);
+        color: white;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        flex-shrink: 0;
+      }
+
+      .step-content h4 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+      }
+
+      .step-content p {
+        color: var(--text-secondary);
+        margin: 0;
+      }
+
       /* Footer */
       .footer {
         background: var(--text-primary);
@@ -703,6 +759,11 @@
         .stats {
           grid-template-columns: repeat(2, 1fr);
         }
+
+        .step {
+          flex-direction: column;
+          gap: 0.5rem;
+        }
       }
 
       /* Animations */
@@ -738,10 +799,12 @@
           MCP-Appium
         </a>
         <ul class="nav-links">
-          <li><a href="#features">Features</a></li>
           <li><a href="#installation">Installation</a></li>
+          <li><a href="#video-demo">Demo</a></li>
+          <li><a href="#features">Features</a></li>
           <li><a href="#examples">Examples</a></li>
           <li><a href="#docs">Docs</a></li>
+          <li><a href="#ai-integration">AI Integration</a></li>
         </ul>
         <a
           href="https://github.com/Rahulec08/appium-mcp"
@@ -814,13 +877,18 @@
       <!-- Installation -->
       <section id="installation" class="section installation">
         <div class="container">
+          <div class="section-header animate-on-scroll">
+            <h2 class="section-title">Quick Installation</h2>
+            <p class="section-subtitle">
+              Get started with MCP-Appium in seconds. Choose your preferred package manager.
+            </p>
+          </div>
           <div class="install-grid">
             <div class="install-content animate-on-scroll">
-              <h3>Quick Installation</h3>
+              <h3>Start Automating in Minutes</h3>
               <p>
-                Get started with MCP-Appium in seconds. Choose your preferred
-                package manager and start automating mobile devices with
-                AI-powered capabilities.
+                Install MCP-Appium and start automating mobile devices with
+                AI-powered capabilities. Compatible with npm, yarn, and pnpm.
               </p>
               <div class="cta-buttons">
                 <a
@@ -868,6 +936,28 @@
                 <div>$ pnpm add mcp-appium-visual</div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Video Demo Section -->
+      <section id="video-demo" class="section code-showcase">
+        <div class="container">
+          <div class="section-header animate-on-scroll">
+            <h2 class="section-title">See MCP-Appium in Action</h2>
+            <p class="section-subtitle">
+              Watch how AI agents control mobile devices using MCP-Appium
+            </p>
+          </div>
+          
+          <div class="video-wrapper animate-on-scroll">
+            <iframe
+              src="https://www.youtube.com/embed/J_Y4NrEMlcI?autoplay=1&mute=1"
+              title="MCP-Appium Demo"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
           </div>
         </div>
       </section>
@@ -1104,6 +1194,80 @@
               >
                 Get Support →
               </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI Integration Section -->
+      <section id="ai-integration" class="section">
+        <div class="container">
+          <div class="section-header animate-on-scroll">
+            <h2 class="section-title">AI Agent Integration</h2>
+            <p class="section-subtitle">
+              Connect Claude or other AI assistants to mobile devices with MCP-Appium
+            </p>
+          </div>
+          
+          <div class="code-grid">
+            <div class="animate-on-scroll">
+              <h3>🤖 Seamless AI Integration</h3>
+              <p>
+                Enable mobile automation for your AI assistant by adding this configuration
+                to your Claude Desktop settings file or other MCP-compatible agents.
+              </p>
+              <div class="integration-steps">
+                <div class="step">
+                  <div class="step-number">1</div>
+                  <div class="step-content">
+                    <h4>Configure MCP Server</h4>
+                    <p>Add the configuration to your agent's settings</p>
+                  </div>
+                </div>
+                <div class="step">
+                  <div class="step-number">2</div>
+                  <div class="step-content">
+                    <h4>Start Appium Server</h4>
+                    <p>Launch Appium on port 4723</p>
+                  </div>
+                </div>
+                <div class="step">
+                  <div class="step-number">3</div>
+                  <div class="step-content">
+                    <h4>Connect Device</h4>
+                    <p>Use Android or iOS device/emulator</p>
+                  </div>
+                </div>
+                <div class="step">
+                  <div class="step-number">4</div>
+                  <div class="step-content">
+                    <h4>Automate with AI</h4>
+                    <p>Use natural language commands</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="code-example animate-on-scroll">
+              <button
+                class="copy-btn"
+                onclick="copyToClipboard('{\n  \"mcpServers\": {\n    \"mcp-appium-visual\": {\n      \"command\": \"npx\",\n      \"args\": [\"mcp-appium-visual@1.3.3\"],\n      \"env\": {\n        \"NODE_OPTIONS\": \"--max-old-space-size=4096\"\n      }\n    }\n  }\n}')"
+              >
+                Copy
+              </button>
+              <div class="code-content">
+                <div class="code-comment">// Claude Desktop Configuration</div>
+                <div><span class="code-keyword">{</span></div>
+                <div>  <span class="code-string">"mcpServers"</span>: <span class="code-keyword">{</span></div>
+                <div>    <span class="code-string">"mcp-appium-visual"</span>: <span class="code-keyword">{</span></div>
+                <div>      <span class="code-string">"command"</span>: <span class="code-string">"npx"</span>,</div>
+                <div>      <span class="code-string">"args"</span>: [<span class="code-string">"mcp-appium-visual@1.3.3"</span>],</div>
+                <div>      <span class="code-string">"env"</span>: <span class="code-keyword">{</span></div>
+                <div>        <span class="code-string">"NODE_OPTIONS"</span>: <span class="code-string">"--max-old-space-size=4096"</span></div>
+                <div>      <span class="code-keyword">}</span></div>
+                <div>    <span class="code-keyword">}</span></div>
+                <div>  <span class="code-keyword">}</span></div>
+                <div><span class="code-keyword">}</span></div>
+              </div>
             </div>
           </div>
         </div>
