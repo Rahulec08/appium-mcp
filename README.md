@@ -2,7 +2,10 @@
 
 A Model Context Protocol (MCP) server implementation for mobile app automation using Appium.
 
-[![AI + Appium + ADB: How Revolutionizing Mobile Test Automation](https://img.youtube.com/vi/J_Y4NrEMlcI/hqdefault.jpg)](https://www.youtube.com/watch?v=J_Y4NrEMlcI)
+<iframe width="640" height="360"
+  src="https://www.youtube.com/embed/J_Y4NrEMlcI?autoplay=1&mute=1&loop=1"
+  frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
+</iframe>
 
 ## Prerequisites
 
