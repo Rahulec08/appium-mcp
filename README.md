@@ -5,6 +5,12 @@ A Model Context Protocol (MCP) server implementation for mobile app automation u
 <a href="https://glama.ai/mcp/servers/@Rsec08/appium-mcp">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@Rsec08/appium-mcp/badge" alt="Appium Server MCP server" />
 </a>
+## 📽️ Demo
+
+[![AI + Appium + ADB: How Revolutionizing Mobile Test Automation](https://img.youtube.com/vi/J_Y4NrEMlcI/hqdefault.jpg)](https://www.youtube.com/watch?v=J_Y4NrEMlcI)
+
+
+
 
 ## Prerequisites
 
