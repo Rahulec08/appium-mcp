@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerMobileTools } from "./tools/mobileTools.js";
 import { registerInspectorTools } from "./tools/inspectorTools.js";
 import { registerAdbTools } from "./tools/adbTools.js";
+import { registerXcodeTools } from "./tools/xcodeTools.js";
 
 // Create an MCP server instance
 const server = new McpServer({
@@ -18,6 +19,7 @@ const server = new McpServer({
 registerMobileTools(server);
 registerInspectorTools(server);
 registerAdbTools(server);
+registerXcodeTools(server); // Add Xcode tools registration
 
 async function main() {
   // Use stdio transport for communication
@@ -26,7 +28,9 @@ async function main() {
   // Connect the server to the transport
   await server.connect(transport);
 
-  console.error("Mobile Automation MCP Server running...");
+  console.error(
+    "Mobile Automation MCP Server running with iOS Simulator support..."
+  );
 }
 
 main().catch((error) => {

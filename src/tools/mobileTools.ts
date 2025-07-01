@@ -4233,3 +4233,13 @@ export function registerMobileTools(server: McpServer) {
     }
   );
 }
+
+export const TEST_CONFIG = {
+  // ...other config...
+  timeouts: {
+    xlarge: 60000,
+    large: 30000,
+    medium: 10000,
+    small: 5000,
+  },
+};
