@@ -307,9 +307,7 @@ export function registerInspectorTools(server: McpServer) {
 
         // Step 1: Get fresh page source if requested
         console.log(`Getting page source (refresh: ${refreshSource})`);
-        const pageSource = await appiumHelper.getPageSource(
-          refreshSource || false
-        );
+        const pageSource = await appiumHelper.getPageSource();
 
         // Step 2: Try to find element locators
         const locators = await findElementLocators(
@@ -609,7 +607,7 @@ export function registerInspectorTools(server: McpServer) {
 
         // Get page source
         console.log(`Getting page source (refresh: ${refreshSource})`);
-        const pageSource = await appiumHelper.getPageSource(refreshSource);
+        const pageSource = await appiumHelper.getPageSource();
 
         // Extract all elements
         console.log("Extracting elements from page source");

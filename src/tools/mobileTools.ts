@@ -735,7 +735,6 @@ export function registerMobileTools(server: McpServer) {
 
         const success = await validAppiumHelper.scrollToElement(
           selector,
-          (direction as "up" | "down" | "left" | "right") || "down",
           strategy || "xpath",
           maxScrolls || 10
         );
@@ -2719,11 +2718,7 @@ export function registerMobileTools(server: McpServer) {
           };
         }
 
-        const tree = await validAppiumHelper.getElementTree(
-          undefined,
-          "xpath",
-          maxDepth || 5
-        );
+        const tree = await validAppiumHelper.getElementTree();
 
         return {
           content: [

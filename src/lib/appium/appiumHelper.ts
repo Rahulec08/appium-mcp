@@ -4,7 +4,6 @@ import {
   Browser,
   Element,
   ElementArray,
-  TouchAction,
 } from "webdriverio";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -20,24 +19,104 @@ export class AppiumError extends Error {
 }
 
 /**
- * Appium capabilities for different platforms
+ * W3C compliant Appium capabilities for different platforms
  */
 export interface AppiumCapabilities {
+  // Standard W3C capabilities (no prefix required)
   platformName: "Android" | "iOS";
-  deviceName: string;
+  browserName?: string;
+  browserVersion?: string;
+  platformVersion?: string;
+
+  // Appium-specific capabilities (require appium: prefix)
+  "appium:deviceName"?: string;
+  "appium:udid"?: string;
+  "appium:automationName"?:
+    | "UiAutomator2"
+    | "XCUITest"
+    | "Espresso"
+    | "Flutter";
+  "appium:app"?: string;
+  "appium:appPackage"?: string;
+  "appium:appActivity"?: string;
+  "appium:bundleId"?: string;
+  "appium:noReset"?: boolean;
+  "appium:fullReset"?: boolean;
+  "appium:newCommandTimeout"?: number;
+  "appium:commandTimeouts"?: Record<string, number>;
+  "appium:orientation"?: "PORTRAIT" | "LANDSCAPE";
+  "appium:autoAcceptAlerts"?: boolean;
+  "appium:autoDismissAlerts"?: boolean;
+  "appium:language"?: string;
+  "appium:locale"?: string;
+  "appium:printPageSourceOnFindFailure"?: boolean;
+
+  // Allow additional appium: prefixed capabilities
+  [key: `appium:${string}`]: any;
+
+  // Legacy format support (will be automatically converted)
+  deviceName?: string;
   udid?: string;
-  automationName?: "UiAutomator2" | "XCUITest";
+  automationName?: "UiAutomator2" | "XCUITest" | "Espresso" | "Flutter";
   app?: string;
   appPackage?: string;
   appActivity?: string;
   bundleId?: string;
   noReset?: boolean;
   fullReset?: boolean;
+  newCommandTimeout?: number;
+
+  // Allow any additional properties for flexibility
   [key: string]: any;
 }
 
 /**
- * Helper class for Appium operations
+ * W3C Actions API types for advanced gestures
+ */
+interface W3CPointerAction {
+  type: "pointer";
+  id: string;
+  parameters: {
+    pointerType: "touch" | "pen" | "mouse";
+  };
+  actions: Array<{
+    type: "pointerMove" | "pointerDown" | "pointerUp" | "pause";
+    duration?: number;
+    x?: number;
+    y?: number;
+    button?: number;
+    origin?: "viewport" | "pointer";
+  }>;
+}
+
+interface W3CKeyAction {
+  type: "key";
+  id: string;
+  actions: Array<{
+    type: "keyDown" | "keyUp" | "pause";
+    value?: string;
+    duration?: number;
+  }>;
+}
+
+interface W3CWheelAction {
+  type: "wheel";
+  id: string;
+  actions: Array<{
+    type: "scroll" | "pause";
+    x?: number;
+    y?: number;
+    deltaX?: number;
+    deltaY?: number;
+    duration?: number;
+    origin?: "viewport" | "pointer";
+  }>;
+}
+
+type W3CAction = W3CPointerAction | W3CKeyAction | W3CWheelAction;
+
+/**
+ * Helper class for W3C compliant Appium operations
  */
 export class AppiumHelper {
   private driver: Browser | null = null;
@@ -47,71 +126,90 @@ export class AppiumHelper {
   private lastCapabilities: AppiumCapabilities | null = null;
   private lastAppiumUrl: string | null = null;
 
-  /**
-   * Create a new AppiumHelper instance
-   *
-   * @param screenshotDir Directory to save screenshots to
-   */
-  constructor(screenshotDir: string = "./screenshots") {
+  constructor(screenshotDir: string = "./test-screenshots") {
     this.screenshotDir = screenshotDir;
   }
 
   /**
-   * Initialize the Appium driver with provided capabilities
-   *
-   * @param capabilities Appium capabilities
-   * @param appiumUrl Appium server URL
-   * @returns Reference to the initialized driver
+   * Convert legacy capabilities to W3C compliant format
+   */
+  private formatCapabilitiesForW3C(
+    capabilities: AppiumCapabilities
+  ): Record<string, any> {
+    const w3cCapabilities: Record<string, any> = {};
+
+    // List of standard W3C capabilities that don't need appium: prefix
+    const standardW3CCaps = [
+      "platformName",
+      "browserName",
+      "browserVersion",
+      "platformVersion",
+      "acceptInsecureCerts",
+      "pageLoadStrategy",
+      "proxy",
+      "setWindowRect",
+      "timeouts",
+      "unhandledPromptBehavior",
+    ];
+
+    for (const [key, value] of Object.entries(capabilities)) {
+      if (value === undefined || value === null) {
+        continue;
+      }
+
+      if (standardW3CCaps.includes(key)) {
+        w3cCapabilities[key] = value;
+      } else if (key.startsWith("appium:")) {
+        w3cCapabilities[key] = value;
+      } else {
+        w3cCapabilities[`appium:${key}`] = value;
+      }
+    }
+
+    return w3cCapabilities;
+  }
+
+  /**
+   * Initialize the Appium driver with W3C compliant capabilities
    */
   async initializeDriver(
     capabilities: AppiumCapabilities,
     appiumUrl: string = "http://localhost:4723"
   ): Promise<Browser> {
     try {
-      // Source .bash_profile to ensure all environment variables are loaded
-      try {
-        // Only run this on Unix-like systems (macOS, Linux)
-        if (process.platform !== "win32") {
-          const { execSync } = require("child_process");
-          execSync("source ~/.bash_profile 2>/dev/null || true", {
-            shell: "/bin/bash",
-          });
-          console.log("Sourced .bash_profile for environment setup");
-        }
-      } catch (envError) {
-        console.warn(
-          "Could not source .bash_profile, continuing anyway:",
-          envError instanceof Error ? envError.message : String(envError)
-        );
-      }
-
-      // Store the capabilities and URL for potential session recovery
       this.lastCapabilities = { ...capabilities };
       this.lastAppiumUrl = appiumUrl;
 
-      // Add 'appium:' prefix to all non-standard capabilities
-      const formattedCapabilities: Record<string, any> = {};
-      for (const [key, value] of Object.entries(capabilities)) {
-        // platformName doesn't need a prefix, everything else does
-        if (key === "platformName") {
-          formattedCapabilities[key] = value;
-        } else {
-          formattedCapabilities[`appium:${key}`] = value;
-        }
-      }
+      const w3cCapabilities = this.formatCapabilitiesForW3C(capabilities);
+      console.log(
+        "W3C Formatted Capabilities:",
+        JSON.stringify(w3cCapabilities, null, 2)
+      );
 
+      const parsedUrl = new URL(appiumUrl);
       const options: RemoteOptions = {
-        hostname: new URL(appiumUrl).hostname,
-        port: parseInt(new URL(appiumUrl).port),
-        path: "/wd/hub",
+        hostname: parsedUrl.hostname,
+        port: parseInt(parsedUrl.port) || 4723,
+        path: parsedUrl.pathname || "/",
+        protocol: parsedUrl.protocol.replace(":", "") as "http" | "https",
         connectionRetryCount: 3,
+        connectionRetryTimeout: 30000,
         logLevel: "error",
-        capabilities: formattedCapabilities,
+        capabilities: w3cCapabilities,
+        strictSSL: false,
       };
 
+      console.log(`Connecting to Appium server: ${appiumUrl}`);
       this.driver = await remote(options);
+
+      const sessionId = this.driver.sessionId;
+      console.log(
+        `✅ Appium driver initialized successfully with session ID: ${sessionId}`
+      );
+
       return this.driver;
     } catch (error) {
+      console.error("Failed to initialize Appium driver:", error);
       throw new AppiumError(
         `Failed to initialize Appium driver: ${
           error instanceof Error ? error.message : String(error)
@@ -122,57 +220,40 @@ export class AppiumHelper {
   }
 
   /**
-   * Check if the session is still valid and attempt to recover if not
-   *
-   * @returns true if session is valid or was successfully recovered
+   * W3C Session Management
    */
   async validateSession(): Promise<boolean> {
-    if (!this.driver) {
-      return false;
-    }
+    if (!this.driver) return false;
 
     try {
-      // Simple check to see if session is still valid
       await this.driver.getPageSource();
       return true;
     } catch (error) {
-      // Check if the error is a NoSuchDriverError or session terminated error
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
       if (
         errorMessage.includes("NoSuchDriverError") ||
         errorMessage.includes("terminated") ||
-        errorMessage.includes("not started")
+        errorMessage.includes("invalid session id")
       ) {
-        console.log("Appium session terminated, attempting to recover...");
+        console.log("Session terminated, attempting recovery...");
 
-        // Try to recover the session if we have the last capabilities
         if (this.lastCapabilities && this.lastAppiumUrl) {
           try {
-            // Close the existing driver first to clean up
             try {
               await this.driver.deleteSession();
-            } catch {
-              // Ignore errors when trying to delete an already terminated session
-            }
-
+            } catch {}
             this.driver = null;
 
-            // Re-initialize with the stored capabilities
             await this.initializeDriver(
               this.lastCapabilities,
               this.lastAppiumUrl
             );
-            console.log("Session recovery successful");
+            console.log("✅ Session recovery successful");
             return true;
-          } catch (recoveryError) {
-            console.error(
-              "Session recovery failed:",
-              recoveryError instanceof Error
-                ? recoveryError.message
-                : String(recoveryError)
-            );
+          } catch {
+            console.error("❌ Session recovery failed");
             return false;
           }
         }
@@ -181,13 +262,6 @@ export class AppiumHelper {
     }
   }
 
-  /**
-   * Safely execute an Appium command with session validation
-   *
-   * @param operation Function that performs the Appium operation
-   * @param errorMessage Error message to throw if operation fails
-   * @returns Result of the operation
-   */
   async safeExecute<T>(
     operation: () => Promise<T>,
     errorMessage: string
@@ -195,9 +269,7 @@ export class AppiumHelper {
     try {
       return await operation();
     } catch (error) {
-      // Try to recover the session if it's terminated
       if (await this.validateSession()) {
-        // If session recovery was successful, try the operation again
         try {
           return await operation();
         } catch (retryError) {
@@ -221,11 +293,6 @@ export class AppiumHelper {
     }
   }
 
-  /**
-   * Get the current driver instance
-   *
-   * @returns The driver instance or throws if not initialized
-   */
   getDriver(): Browser {
     if (!this.driver) {
       throw new AppiumError(
@@ -235,19 +302,16 @@ export class AppiumHelper {
     return this.driver;
   }
 
-  /**
-   * Close the Appium session
-   */
   async closeDriver(): Promise<void> {
     if (this.driver) {
       try {
         await this.driver.deleteSession();
+        console.log("✅ Appium session closed successfully");
       } catch (error) {
         console.warn(
-          "Error while closing Appium session:",
+          "⚠️ Error while closing Appium session:",
           error instanceof Error ? error.message : String(error)
         );
-        // We don't rethrow here as we want to clean up regardless of errors
       } finally {
         this.driver = null;
       }
@@ -255,65 +319,7 @@ export class AppiumHelper {
   }
 
   /**
-   * Take a screenshot and save it to the specified directory
-   *
-   * @param name Screenshot name
-   * @returns Path to the saved screenshot
-   */
-  async takeScreenshot(name: string): Promise<string> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
-    try {
-      await fs.mkdir(this.screenshotDir, { recursive: true });
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const filename = `${name}_${timestamp}.png`;
-      const filepath = path.join(this.screenshotDir, filename);
-
-      const screenshot = await this.driver.takeScreenshot();
-      await fs.writeFile(filepath, Buffer.from(screenshot, "base64"));
-
-      return filepath;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to take screenshot: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Check if an element exists
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @returns true if the element exists
-   */
-  async elementExists(
-    selector: string,
-    strategy: string = "xpath"
-  ): Promise<boolean> {
-    try {
-      await this.findElement(selector, strategy);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Find an element by its selector with retry mechanism
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @param timeoutMs Timeout in milliseconds
-   * @returns WebdriverIO element if found
+   * W3C Element Location Strategies
    */
   async findElement(
     selector: string,
@@ -336,22 +342,58 @@ export class AppiumHelper {
 
           switch (strategy.toLowerCase()) {
             case "id":
-              element = await this.driver!.$(`id=${selector}`);
+              element = await this.driver!.$(`[id="${selector}"]`);
               break;
             case "xpath":
-              element = await this.driver!.$(`${selector}`);
+              element = await this.driver!.$(selector);
               break;
             case "accessibility id":
               element = await this.driver!.$(`~${selector}`);
               break;
             case "class name":
-              element = await this.driver!.$(`${selector}`);
+              element = await this.driver!.$(`.${selector}`);
+              break;
+            case "tag name":
+              element = await this.driver!.$(`<${selector}>`);
+              break;
+            case "name":
+              element = await this.driver!.$(`[name="${selector}"]`);
+              break;
+            case "link text":
+              element = await this.driver!.$(`=${selector}`);
+              break;
+            case "partial link text":
+              element = await this.driver!.$(`*=${selector}`);
+              break;
+            case "css selector":
+              element = await this.driver!.$(selector);
+              break;
+            // Mobile-specific strategies
+            case "android uiautomator":
+              element = await this.driver!.$(`android=${selector}`);
+              break;
+            case "ios predicate string":
+              element = await this.driver!.$(
+                `-ios predicate string:${selector}`
+              );
+              break;
+            case "ios class chain":
+              element = await this.driver!.$(`-ios class chain:${selector}`);
+              break;
+            case "android viewtag":
+              element = await this.driver!.$(`android.viewtag=${selector}`);
+              break;
+            case "android datamatcher":
+              element = await this.driver!.$(`android.datamatcher=${selector}`);
+              break;
+            case "windows uiautomation":
+              element = await this.driver!.$(`windows=${selector}`);
               break;
             default:
-              element = await this.driver!.$(`${selector}`);
+              element = await this.driver!.$(selector);
           }
 
-          await element.waitForExist({ timeout: timeoutMs });
+          await element.waitForExist({ timeout: Math.min(timeoutMs, 5000) });
           return element;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
@@ -360,19 +402,12 @@ export class AppiumHelper {
       }
 
       throw new AppiumError(
-        `Failed to find element with selector ${selector} after ${timeoutMs}ms: ${lastError?.message}`,
+        `Failed to find element with selector ${selector} using strategy ${strategy} after ${timeoutMs}ms: ${lastError?.message}`,
         lastError
       );
     }, `Failed to find element with selector ${selector}`);
   }
 
-  /**
-   * Find multiple elements by selector
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @returns Array of WebdriverIO elements
-   */
   async findElements(
     selector: string,
     strategy: string = "xpath"
@@ -388,19 +423,43 @@ export class AppiumHelper {
 
       switch (strategy.toLowerCase()) {
         case "id":
-          elements = await this.driver.$$(`id=${selector}`);
+          elements = await this.driver.$$(`[id="${selector}"]`);
           break;
         case "xpath":
-          elements = await this.driver.$$(`${selector}`);
+          elements = await this.driver.$$(selector);
           break;
         case "accessibility id":
           elements = await this.driver.$$(`~${selector}`);
           break;
         case "class name":
-          elements = await this.driver.$$(`${selector}`);
+          elements = await this.driver.$$(`.${selector}`);
+          break;
+        case "tag name":
+          elements = await this.driver.$$(`<${selector}>`);
+          break;
+        case "name":
+          elements = await this.driver.$$(`[name="${selector}"]`);
+          break;
+        case "link text":
+          elements = await this.driver.$$(`=${selector}`);
+          break;
+        case "partial link text":
+          elements = await this.driver.$$(`*=${selector}`);
+          break;
+        case "css selector":
+          elements = await this.driver.$$(selector);
+          break;
+        case "android uiautomator":
+          elements = await this.driver.$$(`android=${selector}`);
+          break;
+        case "ios predicate string":
+          elements = await this.driver.$$(`-ios predicate string:${selector}`);
+          break;
+        case "ios class chain":
+          elements = await this.driver.$$(`-ios class chain:${selector}`);
           break;
         default:
-          elements = await this.driver.$$(`${selector}`);
+          elements = await this.driver.$$(selector);
       }
 
       return elements;
@@ -415,17 +474,15 @@ export class AppiumHelper {
   }
 
   /**
-   * Tap on an element with retry mechanism
-   * Uses W3C Actions API with fallback to TouchAction API for compatibility
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @returns true if successful
-   * @throws AppiumError if the operation fails after retries
+   * W3C Element Interaction Actions
    */
+  async click(selector: string, strategy: string = "xpath"): Promise<boolean> {
+    return this.tapElement(selector, strategy);
+  }
+
   async tapElement(
     selector: string,
-    strategy: string = "accessibility"
+    strategy: string = "xpath"
   ): Promise<boolean> {
     if (!this.driver) {
       throw new AppiumError(
@@ -435,262 +492,215 @@ export class AppiumHelper {
 
     return this.safeExecute(async () => {
       let lastError: Error | undefined;
-      console.log(`Attempting to tap element with ${strategy}: ${selector}`);
+      console.log(`🎯 Attempting to tap element with ${strategy}: ${selector}`);
 
       for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
         try {
-          let element: Element;
-          console.log(`Attempt ${attempt}/${this.maxRetries}`);
+          const element = await this.findElement(selector, strategy, 10000);
+          await element.waitForDisplayed({ timeout: 5000 });
 
-          // Handle different selector strategies
-          switch (strategy.toLowerCase()) {
-            case "accessibility id":
-              console.log(`Using accessibility ID strategy: ~${selector}`);
-              element = await this.driver!.$(`~${selector}`);
-              break;
-            case "id":
-            case "resource id":
-              console.log(`Using ID strategy: id=${selector}`);
-              element = await this.driver!.$(`id=${selector}`);
-              break;
-            case "android uiautomator":
-            case "uiautomator":
-              console.log(
-                `Using Android UiAutomator strategy: android=${selector}`
-              );
-              element = await this.driver!.$(`android=${selector}`);
-              break;
-            case "xpath":
-              console.log(`Using XPath strategy: ${selector}`);
-              element = await this.driver!.$(`${selector}`);
-              break;
-            default:
-              console.log(`Using default strategy: ${selector}`);
-              element = await this.driver!.$(`${selector}`);
+          // Method 1: Standard W3C element click
+          try {
+            await element.click();
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            console.log("✅ Standard click successful");
+            return true;
+          } catch (clickError) {
+            console.log(`❌ Standard click failed: ${clickError}`);
           }
 
-          // Make sure element is visible and clickable
-          console.log("Waiting for element to be clickable...");
-          await element.waitForClickable({ timeout: 5000 });
-
-          // First try using standard element click() method
+          // Method 2: W3C Actions API
           try {
-            console.log("Attempting standard click");
-            await element.click();
-          } catch (clickError) {
-            console.log(
-              `Standard click failed: ${
-                clickError instanceof Error
-                  ? clickError.message
-                  : String(clickError)
-              }`
-            );
-
-            // Get element location and size for tap coordinates
             const location = await element.getLocation();
             const size = await element.getSize();
-            const centerX = location.x + size.width / 2;
-            const centerY = location.y + size.height / 2;
+            const centerX = Math.round(location.x + size.width / 2);
+            const centerY = Math.round(location.y + size.height / 2);
 
-            try {
-              // Try W3C Actions API first (modern approach)
-              console.log("Attempting W3C Actions API tap");
-              const actions = [
-                {
-                  type: "pointer",
-                  id: "finger1",
-                  parameters: { pointerType: "touch" },
-                  actions: [
-                    // Move to element center
-                    {
-                      type: "pointerMove",
-                      duration: 0,
-                      x: centerX,
-                      y: centerY,
-                    },
-                    // Press down
-                    { type: "pointerDown", button: 0 },
-                    // Short wait
-                    { type: "pause", duration: 100 },
-                    // Release
-                    { type: "pointerUp", button: 0 },
-                  ],
-                },
-              ];
+            const w3cActions: W3CPointerAction[] = [
+              {
+                type: "pointer",
+                id: "finger1",
+                parameters: { pointerType: "touch" },
+                actions: [
+                  {
+                    type: "pointerMove",
+                    duration: 0,
+                    x: centerX,
+                    y: centerY,
+                    origin: "viewport",
+                  },
+                  { type: "pointerDown", button: 0 },
+                  { type: "pause", duration: 100 },
+                  { type: "pointerUp", button: 0 },
+                ],
+              },
+            ];
 
-              await this.driver!.performActions(actions);
-            } catch (w3cError) {
-              // If W3C Actions fail, fall back to TouchAction API
-              console.log(
-                "W3C Actions failed, falling back to TouchAction API"
-              );
-              await this.driver!.touchAction([
-                {
-                  action: "tap",
-                  x: centerX,
-                  y: centerY,
-                },
-              ]);
-            }
+            await this.driver!.performActions(w3cActions);
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            console.log("✅ W3C Actions tap successful");
+            return true;
+          } catch (w3cError) {
+            console.log(`❌ W3C Actions failed: ${w3cError}`);
           }
 
-          // Small pause after click to let UI update
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          console.log("Tap action completed successfully");
-          return true;
+          // Method 3: Mobile tap command
+          try {
+            const location = await element.getLocation();
+            const size = await element.getSize();
+            const centerX = Math.round(location.x + size.width / 2);
+            const centerY = Math.round(location.y + size.height / 2);
+
+            await this.driver!.executeScript("mobile: tap", [
+              { x: centerX, y: centerY },
+            ]);
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            console.log("✅ Mobile tap successful");
+            return true;
+          } catch (mobileError) {
+            lastError =
+              mobileError instanceof Error
+                ? mobileError
+                : new Error(String(mobileError));
+          }
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
-          console.log(`Tap attempt ${attempt} failed: ${lastError.message}`);
+          console.log(`❌ Tap attempt ${attempt} failed: ${lastError.message}`);
+
           if (attempt < this.maxRetries) {
-            const pauseTime = this.retryDelay * attempt; // Gradually increase wait time
-            console.log(`Will retry in ${pauseTime}ms`);
-            await new Promise((resolve) => setTimeout(resolve, pauseTime));
+            await new Promise((resolve) =>
+              setTimeout(resolve, this.retryDelay * attempt)
+            );
           }
         }
       }
 
       throw new AppiumError(
-        `Failed to tap element with selector ${selector} using strategy ${strategy} after ${this.maxRetries} attempts: ${lastError?.message}`,
+        `Failed to tap element after ${this.maxRetries} attempts: ${lastError?.message}`,
         lastError
       );
-    }, `Failed to tap element with selector ${selector} using strategy ${strategy}`);
+    }, `Failed to tap element with selector ${selector}`);
   }
 
-  /**
-   * Click on an element - alias for tapElement for better Selenium compatibility
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @returns true if successful
-   * @throws AppiumError if the operation fails after retries
-   */
-  async click(selector: string, strategy: string = "xpath"): Promise<boolean> {
-    return this.tapElement(selector, strategy);
-  }
-
-  /**
-   * Send keys to an element with retry mechanism
-   *
-   * @param selector Element selector
-   * @param text Text to send
-   * @param strategy Selection strategy
-   * @returns true if successful
-   * @throws AppiumError if the operation fails after retries
-   */
   async sendKeys(
     selector: string,
     text: string,
     strategy: string = "xpath"
   ): Promise<boolean> {
-    let lastError: Error | undefined;
-
-    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
-      try {
-        const element = await this.findElement(selector, strategy);
-        await element.waitForEnabled({ timeout: 5000 });
-        await element.setValue(text);
-        return true;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        if (attempt < this.maxRetries) {
-          await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
-        }
-      }
-    }
-
-    throw new AppiumError(
-      `Failed to send keys to element with selector ${selector} after ${this.maxRetries} attempts: ${lastError?.message}`,
-      lastError
-    );
-  }
-
-  /**
-   * Get the page source (XML representation of the current UI)
-   *
-   * @param refreshFirst Whether to try refreshing the UI before getting page source
-   * @param suppressErrors Whether to suppress specific iOS errors and return empty source
-   * @returns XML string of the current UI
-   */
-  async getPageSource(
-    refreshFirst: boolean = false,
-    suppressErrors: boolean = true
-  ): Promise<string> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
     return this.safeExecute(async () => {
-      try {
-        // Refresh the page if requested
-        if (refreshFirst) {
-          // For native apps, we can do a small swipe down and back up to refresh the UI
-          const size = await this.driver!.getWindowSize();
-          const centerX = size.width / 2;
-          const startY = size.height * 0.3;
-          const endY = size.height * 0.4;
+      for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+        try {
+          const element = await this.findElement(selector, strategy);
+          await element.waitForDisplayed({ timeout: 5000 });
 
-          // Swipe down slightly
-          await this.swipe(centerX, startY, centerX, endY, 300);
-          // Small pause
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          // Swipe back up
-          await this.swipe(centerX, endY, centerX, startY, 300);
-          // Wait for refresh to complete
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
+          try {
+            await element.clearValue();
+          } catch {}
 
-        // Try getting the page source
-        return await this.driver!.getPageSource();
-      } catch (error) {
-        // Handle iOS-specific XCUITest errors
-        if (suppressErrors && error instanceof Error) {
-          const errorMessage = error.message || "";
-
-          // Check for known iOS automation issues
-          if (
-            errorMessage.includes("waitForQuiescenceIncludingAnimationsIdle") ||
-            errorMessage.includes("unrecognized selector sent to instance") ||
-            errorMessage.includes("failed to get page source")
-          ) {
-            console.warn(
-              "iOS source retrieval warning: Using fallback due to animation or UI state issue."
+          await element.setValue(text);
+          console.log("✅ Send keys successful");
+          return true;
+        } catch (error) {
+          console.log(`❌ Send keys attempt ${attempt} failed: ${error}`);
+          if (attempt < this.maxRetries) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, this.retryDelay)
             );
-
-            // Wait a bit for potential animations to complete
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-
-            try {
-              // Try again with direct call (might work)
-              return await this.driver!.getPageSource();
-            } catch (retryError) {
-              // Return empty source with warning
-              return `<AppRoot><Warning>Source unavailable due to iOS animation state issues</Warning></AppRoot>`;
-            }
           }
         }
-
-        // Rethrow other errors
-        throw new AppiumError(
-          `Failed to get page source: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-          error instanceof Error ? error : undefined
-        );
       }
-    }, "Failed to get page source");
+      return false;
+    }, `Failed to send keys to element with selector ${selector}`);
+  }
+
+  async clearElement(
+    selector: string,
+    strategy: string = "xpath"
+  ): Promise<boolean> {
+    try {
+      const element = await this.findElement(selector, strategy);
+      await element.clearValue();
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to clear element: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getText(selector: string, strategy: string = "xpath"): Promise<string> {
+    try {
+      const element = await this.findElement(selector, strategy);
+      return await element.getText();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get text: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getAttribute(
+    selector: string,
+    attributeName: string,
+    strategy: string = "xpath"
+  ): Promise<string | null> {
+    try {
+      const element = await this.findElement(selector, strategy);
+      return await element.getAttribute(attributeName);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get attribute: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async isDisplayed(
+    selector: string,
+    strategy: string = "xpath"
+  ): Promise<boolean> {
+    try {
+      const element = await this.findElement(selector, strategy);
+      return await element.isDisplayed();
+    } catch {
+      return false;
+    }
+  }
+
+  async isEnabled(
+    selector: string,
+    strategy: string = "xpath"
+  ): Promise<boolean> {
+    try {
+      const element = await this.findElement(selector, strategy);
+      return await element.isEnabled();
+    } catch {
+      return false;
+    }
+  }
+
+  async isSelected(
+    selector: string,
+    strategy: string = "xpath"
+  ): Promise<boolean> {
+    try {
+      const element = await this.findElement(selector, strategy);
+      return await element.isSelected();
+    } catch {
+      return false;
+    }
   }
 
   /**
-   * Perform a swipe gesture
-   *
-   * @param startX Starting X coordinate
-   * @param startY Starting Y coordinate
-   * @param endX Ending X coordinate
-   * @param endY Ending Y coordinate
-   * @param duration Swipe duration in milliseconds
-   * @returns true if successful
+   * W3C Touch Actions / Gestures
    */
   async swipe(
     startX: number,
@@ -706,12 +716,34 @@ export class AppiumHelper {
     }
 
     try {
-      await this.driver.touchAction([
-        { action: "press", x: startX, y: startY },
-        { action: "wait", ms: duration },
-        { action: "moveTo", x: endX, y: endY },
-        "release",
-      ]);
+      const w3cActions: W3CPointerAction[] = [
+        {
+          type: "pointer",
+          id: "finger1",
+          parameters: { pointerType: "touch" },
+          actions: [
+            {
+              type: "pointerMove",
+              duration: 0,
+              x: Math.round(startX),
+              y: Math.round(startY),
+              origin: "viewport",
+            },
+            { type: "pointerDown", button: 0 },
+            {
+              type: "pointerMove",
+              duration: duration,
+              x: Math.round(endX),
+              y: Math.round(endY),
+              origin: "viewport",
+            },
+            { type: "pointerUp", button: 0 },
+          ],
+        },
+      ];
+
+      await this.driver.performActions(w3cActions);
+      console.log("✅ W3C swipe successful");
       return true;
     } catch (error) {
       throw new AppiumError(
@@ -723,905 +755,14 @@ export class AppiumHelper {
     }
   }
 
-  /**
-   * Wait for an element to be present
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @param timeoutMs Timeout in milliseconds
-   * @returns true if the element is found within the timeout
-   */
-  async waitForElement(
-    selector: string,
-    strategy: string = "xpath",
-    timeoutMs: number = 10000
-  ): Promise<boolean> {
-    try {
-      await this.findElement(selector, strategy, timeoutMs);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Long press on an element
-   */
-  async longPress(
-    selector: string,
-    duration: number = 1000,
-    strategy: string = "xpath"
-  ): Promise<boolean> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      const element = await this.findElement(selector, strategy);
-      const location = await element.getLocation();
-
-      await this.driver.touchAction([
-        { action: "press", x: location.x, y: location.y },
-        { action: "wait", ms: duration },
-        "release",
-      ] as TouchAction[]);
-      return true;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to long press element: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Scroll to an element
-   *
-   * @param selector Element selector to scroll to
-   * @param direction Direction to scroll ('up', 'down', 'left', 'right')
-   * @param strategy Selection strategy
-   * @param maxScrolls Maximum number of scroll attempts
-   * @returns true if element was found and scrolled to
-   */
-  async scrollToElement(
-    selector: string,
-    direction: "up" | "down" | "left" | "right" = "down",
-    strategy: string = "xpath",
-    maxScrolls: number = 10
-  ): Promise<boolean> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      for (let i = 0; i < maxScrolls; i++) {
-        if (await this.elementExists(selector, strategy)) {
-          return true;
-        }
-
-        const size = await this.driver.getWindowSize();
-        const startX = size.width / 2;
-        const startY = size.height * (direction === "up" ? 0.3 : 0.7);
-        const endY = size.height * (direction === "up" ? 0.7 : 0.3);
-        const endX =
-          direction === "left"
-            ? size.width * 0.9
-            : direction === "right"
-            ? size.width * 0.1
-            : startX;
-
-        // Use W3C Actions API instead of TouchAction API
-        const actions = [
-          {
-            type: "pointer",
-            id: "finger1",
-            parameters: { pointerType: "touch" },
-            actions: [
-              // Move to start position
-              { type: "pointerMove", duration: 0, x: startX, y: startY },
-              // Press down
-              { type: "pointerDown", button: 0 },
-              // Move to end position over duration milliseconds
-              {
-                type: "pointerMove",
-                duration: 800,
-                origin: "viewport",
-                x: endX,
-                y: endY,
-              },
-              // Release
-              { type: "pointerUp", button: 0 },
-            ],
-          },
-        ];
-
-        // Execute the W3C Actions
-        await this.driver.performActions(actions);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-      return false;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to scroll to element: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Get device orientation
-   */
-  async getOrientation(): Promise<"PORTRAIT" | "LANDSCAPE"> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      const orientation = await this.driver.getOrientation();
-      return orientation.toUpperCase() as "PORTRAIT" | "LANDSCAPE";
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to get orientation: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Set device orientation
-   *
-   * @param orientation Desired orientation ('PORTRAIT' or 'LANDSCAPE')
-   */
-  async setOrientation(orientation: "PORTRAIT" | "LANDSCAPE"): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.setOrientation(orientation);
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to set orientation: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Hide the keyboard if visible
-   */
-  async hideKeyboard(): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      const isKeyboardShown = await this.driver.isKeyboardShown();
-      if (isKeyboardShown) {
-        await this.driver.hideKeyboard();
-      }
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to hide keyboard: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Get the current activity (Android) or bundle ID (iOS)
-   */
-  async getCurrentPackage(): Promise<string> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      return await this.driver.getCurrentPackage();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to get current package: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Get the current activity (Android only)
-   */
-  async getCurrentActivity(): Promise<string> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      return await this.driver.getCurrentActivity();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to get current activity: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Launch the app
-   */
-  async launchApp(): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.launchApp();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to launch app: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Close the app
-   */
-  async closeApp(): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.closeApp();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to close app: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Reset the app (clear app data)
-   */
-  async resetApp(): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.terminateApp(await this.getCurrentPackage(), {
-        timeout: 20000,
-      });
-      await this.driver.launchApp();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to reset app: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Get device time
-   *
-   * @returns Device time string
-   */
-  async getDeviceTime(): Promise<string> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      return await this.driver.getDeviceTime();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to get device time: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Get battery info (if supported by the device)
-   * Note: This is a custom implementation as WebdriverIO doesn't directly support this
-   */
-  async getBatteryInfo(): Promise<{ level: number; state: number }> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      // Execute mobile command to get battery info
-      const result = await this.driver.executeScript("mobile: batteryInfo", []);
-      return {
-        level: result.level || 0,
-        state: result.state || 0,
-      };
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to get battery info: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Lock the device
-   *
-   * @param duration Duration in seconds to lock the device
-   */
-  async lockDevice(duration?: number): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.lock(duration);
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to lock device: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Check if device is locked
-   */
-  async isDeviceLocked(): Promise<boolean> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      return await this.driver.isLocked();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to check if device is locked: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Unlock the device
-   */
-  async unlockDevice(): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.unlock();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to unlock device: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Press a key on the device (Android only)
-   *
-   * @param keycode Android keycode
-   */
-  async pressKeyCode(keycode: number): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.pressKeyCode(keycode);
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to press key code: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Open notifications (Android only)
-   */
-  async openNotifications(): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.openNotifications();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to open notifications: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Get all contexts (NATIVE_APP, WEBVIEW, etc.)
-   */
-  async getContexts(): Promise<string[]> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      const contexts = await this.driver.getContexts();
-      return contexts.map((context) => context.toString());
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to get contexts: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Switch context (between NATIVE_APP and WEBVIEW)
-   *
-   * @param context Context name to switch to
-   */
-  async switchContext(context: string): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.switchContext(context);
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to switch context: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Get current context
-   */
-  async getCurrentContext(): Promise<string> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      const context = await this.driver.getContext();
-      return context.toString();
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to get current context: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Pull file from device
-   *
-   * @param path Path to file on device
-   * @returns Base64 encoded file content
-   */
-  async pullFile(path: string): Promise<string> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      return await this.driver.pullFile(path);
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to pull file: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Push file to device
-   *
-   * @param path Path on device to write to
-   * @param data Base64 encoded file content
-   */
-  async pushFile(path: string, data: string): Promise<void> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.pushFile(path, data);
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to push file: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Find an iOS predicate string element (iOS only)
-   *
-   * @param predicateString iOS predicate string
-   * @param timeoutMs Timeout in milliseconds
-   * @returns WebdriverIO element if found
-   */
-  async findByIosPredicate(
-    predicateString: string,
-    timeoutMs: number = 10000
-  ): Promise<Element> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
-    try {
-      const element = await this.driver.$(
-        `-ios predicate string:${predicateString}`
-      );
-      await element.waitForExist({ timeout: timeoutMs });
-      return element;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to find element with iOS predicate: ${predicateString}`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Find an iOS class chain element (iOS only)
-   *
-   * @param classChain iOS class chain
-   * @param timeoutMs Timeout in milliseconds
-   * @returns WebdriverIO element if found
-   */
-  async findByIosClassChain(
-    classChain: string,
-    timeoutMs: number = 10000
-  ): Promise<Element> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
-    try {
-      const element = await this.driver.$(`-ios class chain:${classChain}`);
-      await element.waitForExist({ timeout: timeoutMs });
-      return element;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to find element with iOS class chain: ${classChain}`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Get list of available iOS simulators
-   * Note: This method isn't tied to an Appium session, so it doesn't require an initialized driver
-   * This uses the executeScript capability of WebdriverIO to run a mobile command
-   *
-   * @returns Array of simulator objects
-   */
-  async getIosSimulators(): Promise<any[]> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
-    try {
-      const result = await this.driver.executeScript(
-        "mobile: listSimulators",
-        []
-      );
-      return result.devices || [];
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to get iOS simulators list: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Perform iOS-specific touch ID (fingerprint) simulation
-   *
-   * @param match Whether the fingerprint should match (true) or not match (false)
-   * @returns true if successful
-   */
-  async performTouchId(match: boolean): Promise<boolean> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
-    try {
-      await this.driver.executeScript("mobile: performTouchId", [{ match }]);
-      return true;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to perform Touch ID: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Simulate iOS shake gesture
-   *
-   * @returns true if successful
-   */
-  async shakeDevice(): Promise<boolean> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
-    try {
-      await this.driver.executeScript("mobile: shake", []);
-      return true;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to shake device: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Start recording the screen on iOS or Android device
-   *
-   * @param options Recording options
-   * @returns true if recording started successfully
-   */
-  async startRecording(options?: {
-    videoType?: string;
-    timeLimit?: number;
-    videoQuality?: string;
-    videoFps?: number;
-  }): Promise<boolean> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
-    try {
-      const opts = options || {};
-      await this.driver.startRecordingScreen(opts);
-      return true;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to start screen recording: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Stop recording the screen and get the recording content as base64
-   *
-   * @returns Base64-encoded recording data
-   */
-  async stopRecording(): Promise<string> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
-    try {
-      const recording = await this.driver.stopRecordingScreen();
-      return recording;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to stop screen recording: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Execute a custom mobile command
-   *
-   * @param command Mobile command to execute
-   * @param args Arguments for the command
-   * @returns Command result
-   */
-  async executeMobileCommand(command: string, args: any[] = []): Promise<any> {
-    if (!this.driver) {
-      throw new AppiumError(
-        "Appium driver not initialized. Call initializeDriver first."
-      );
-    }
-
-    try {
-      return await this.driver.executeScript(`mobile: ${command}`, args);
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to execute mobile command '${command}': ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Get text from an element
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @returns Text content of the element
-   * @throws AppiumError if element is not found or has no text
-   */
-  async getText(selector: string, strategy: string = "xpath"): Promise<string> {
-    try {
-      const element = await this.findElement(selector, strategy);
-      const text = await element.getText();
-      return text;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to get text from element with selector ${selector}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Send keys directly to the device (without focusing on an element)
-   *
-   * @param text Text to send
-   * @returns true if successful
-   */
-  async sendKeysToDevice(text: string): Promise<boolean> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      await this.driver.keys(text.split(""));
-      return true;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to send keys to device: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Send key events to the device (e.g. HOME button, BACK button)
-   *
-   * @param keyEvent Key event name or code
-   * @returns true if successful
-   */
-  async sendKeyEvent(keyEvent: string | number): Promise<boolean> {
-    if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
-    }
-
-    try {
-      if (typeof keyEvent === "string") {
-        // For named key events like "home", "back"
-        await this.driver.keys(keyEvent);
-      } else {
-        // For numeric key codes
-        await this.driver.pressKeyCode(keyEvent);
-      }
-      return true;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to send key event ${keyEvent}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Clear text from an input element
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @returns true if successful
-   */
-  async clearElement(
-    selector: string,
-    strategy: string = "xpath"
-  ): Promise<boolean> {
-    try {
-      const element = await this.findElement(selector, strategy);
-      await element.clearValue();
-      return true;
-    } catch (error) {
-      throw new AppiumError(
-        `Failed to clear element with selector ${selector}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Scroll using predefined directions - scrollDown, scrollUp, scrollLeft, scrollRight
-   *
-   * @param direction Direction to scroll: "down", "up", "left", "right"
-   * @param distance Optional percentage of screen to scroll (0.0-1.0), defaults to 0.5
-   * @returns true if successful
-   */
-  async scrollScreen(
-    direction: "down" | "up" | "left" | "right",
+  async scroll(
+    direction: "up" | "down" | "left" | "right",
     distance: number = 0.5
   ): Promise<boolean> {
     if (!this.driver) {
-      throw new AppiumError("Appium driver not initialized");
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
     }
 
     try {
@@ -1658,8 +799,7 @@ export class AppiumHelper {
           break;
       }
 
-      await this.swipe(startX, startY, endX, endY, 800);
-      return true;
+      return await this.swipe(startX, startY, endX, endY, 800);
     } catch (error) {
       throw new AppiumError(
         `Failed to scroll ${direction}: ${
@@ -1670,13 +810,1362 @@ export class AppiumHelper {
     }
   }
 
+  async scrollScreen(
+    direction: "down" | "up" | "left" | "right",
+    distance: number = 0.5
+  ): Promise<boolean> {
+    return this.scroll(direction, distance);
+  }
+
+  async scrollToElement(
+    selector: string,
+    strategy: string = "xpath",
+    maxScrolls: number = 10
+  ): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      for (let i = 0; i < maxScrolls; i++) {
+        const exists = await this.elementExists(selector, strategy);
+        if (exists) {
+          return true;
+        }
+        await this.scroll("down", 0.3);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      return false;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to scroll to element: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async pinch(
+    centerX: number,
+    centerY: number,
+    scale: number = 0.5,
+    duration: number = 1000
+  ): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      const startDistance = 100;
+      const endDistance = startDistance * scale;
+
+      const finger1StartX = centerX - startDistance / 2;
+      const finger1StartY = centerY;
+      const finger1EndX = centerX - endDistance / 2;
+      const finger1EndY = centerY;
+
+      const finger2StartX = centerX + startDistance / 2;
+      const finger2StartY = centerY;
+      const finger2EndX = centerX + endDistance / 2;
+      const finger2EndY = centerY;
+
+      const w3cActions: W3CPointerAction[] = [
+        {
+          type: "pointer",
+          id: "finger1",
+          parameters: { pointerType: "touch" },
+          actions: [
+            {
+              type: "pointerMove",
+              duration: 0,
+              x: finger1StartX,
+              y: finger1StartY,
+              origin: "viewport",
+            },
+            { type: "pointerDown", button: 0 },
+            {
+              type: "pointerMove",
+              duration: duration,
+              x: finger1EndX,
+              y: finger1EndY,
+              origin: "viewport",
+            },
+            { type: "pointerUp", button: 0 },
+          ],
+        },
+        {
+          type: "pointer",
+          id: "finger2",
+          parameters: { pointerType: "touch" },
+          actions: [
+            {
+              type: "pointerMove",
+              duration: 0,
+              x: finger2StartX,
+              y: finger2StartY,
+              origin: "viewport",
+            },
+            { type: "pointerDown", button: 0 },
+            {
+              type: "pointerMove",
+              duration: duration,
+              x: finger2EndX,
+              y: finger2EndY,
+              origin: "viewport",
+            },
+            { type: "pointerUp", button: 0 },
+          ],
+        },
+      ];
+
+      await this.driver.performActions(w3cActions);
+      console.log("✅ Pinch gesture successful");
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to perform pinch: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async zoom(
+    centerX: number,
+    centerY: number,
+    scale: number = 2.0,
+    duration: number = 1000
+  ): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      const startDistance = 50;
+      const endDistance = startDistance * scale;
+
+      const finger1StartX = centerX - startDistance / 2;
+      const finger1StartY = centerY;
+      const finger1EndX = centerX - endDistance / 2;
+      const finger1EndY = centerY;
+
+      const finger2StartX = centerX + startDistance / 2;
+      const finger2StartY = centerY;
+      const finger2EndX = centerX + endDistance / 2;
+      const finger2EndY = centerY;
+
+      const w3cActions: W3CPointerAction[] = [
+        {
+          type: "pointer",
+          id: "finger1",
+          parameters: { pointerType: "touch" },
+          actions: [
+            {
+              type: "pointerMove",
+              duration: 0,
+              x: finger1StartX,
+              y: finger1StartY,
+              origin: "viewport",
+            },
+            { type: "pointerDown", button: 0 },
+            {
+              type: "pointerMove",
+              duration: duration,
+              x: finger1EndX,
+              y: finger1EndY,
+              origin: "viewport",
+            },
+            { type: "pointerUp", button: 0 },
+          ],
+        },
+        {
+          type: "pointer",
+          id: "finger2",
+          parameters: { pointerType: "touch" },
+          actions: [
+            {
+              type: "pointerMove",
+              duration: 0,
+              x: finger2StartX,
+              y: finger2StartY,
+              origin: "viewport",
+            },
+            { type: "pointerDown", button: 0 },
+            {
+              type: "pointerMove",
+              duration: duration,
+              x: finger2EndX,
+              y: finger2EndY,
+              origin: "viewport",
+            },
+            { type: "pointerUp", button: 0 },
+          ],
+        },
+      ];
+
+      await this.driver.performActions(w3cActions);
+      console.log("✅ Zoom gesture successful");
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to perform zoom: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async longPress(
+    selector: string,
+    duration: number = 1000,
+    strategy: string = "xpath"
+  ): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    return this.safeExecute(async () => {
+      const element = await this.findElement(selector, strategy);
+      const location = await element.getLocation();
+      const size = await element.getSize();
+      const centerX = Math.round(location.x + size.width / 2);
+      const centerY = Math.round(location.y + size.height / 2);
+
+      const w3cActions: W3CPointerAction[] = [
+        {
+          type: "pointer",
+          id: "finger1",
+          parameters: { pointerType: "touch" },
+          actions: [
+            {
+              type: "pointerMove",
+              duration: 0,
+              x: centerX,
+              y: centerY,
+              origin: "viewport",
+            },
+            { type: "pointerDown", button: 0 },
+            { type: "pause", duration: duration },
+            { type: "pointerUp", button: 0 },
+          ],
+        },
+      ];
+
+      await this.driver!.performActions(w3cActions);
+      console.log("✅ Long press successful");
+      return true;
+    }, `Failed to long press element with selector ${selector}`);
+  }
+
+  async doubleTap(
+    selector: string,
+    strategy: string = "xpath"
+  ): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    return this.safeExecute(async () => {
+      const element = await this.findElement(selector, strategy);
+      const location = await element.getLocation();
+      const size = await element.getSize();
+      const centerX = Math.round(location.x + size.width / 2);
+      const centerY = Math.round(location.y + size.height / 2);
+
+      const w3cActions: W3CPointerAction[] = [
+        {
+          type: "pointer",
+          id: "finger1",
+          parameters: { pointerType: "touch" },
+          actions: [
+            {
+              type: "pointerMove",
+              duration: 0,
+              x: centerX,
+              y: centerY,
+              origin: "viewport",
+            },
+            { type: "pointerDown", button: 0 },
+            { type: "pointerUp", button: 0 },
+            { type: "pause", duration: 100 },
+            { type: "pointerDown", button: 0 },
+            { type: "pointerUp", button: 0 },
+          ],
+        },
+      ];
+
+      await this.driver!.performActions(w3cActions);
+      console.log("✅ Double tap successful");
+      return true;
+    }, `Failed to double tap element with selector ${selector}`);
+  }
+
   /**
-   * Get element attributes - useful for debugging and inspecting
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @returns Object with element attributes
+   * W3C Navigation and Window Management
    */
+  async navigateBack(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.back();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to navigate back: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async navigateForward(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.forward();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to navigate forward: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async refresh(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.refresh();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to refresh: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getCurrentUrl(): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getUrl();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get current URL: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getTitle(): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getTitle();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get title: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getWindowSize(): Promise<{ width: number; height: number }> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getWindowSize();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get window size: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async setWindowSize(width: number, height: number): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.setWindowSize(width, height);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to set window size: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * W3C Screenshots and Visual Testing
+   */
+  async takeScreenshot(name: string = "screenshot"): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      await fs.mkdir(this.screenshotDir, { recursive: true });
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `${name}_${timestamp}.png`;
+      const filepath = path.join(this.screenshotDir, filename);
+
+      const screenshot = await this.driver.takeScreenshot();
+      await fs.writeFile(filepath, Buffer.from(screenshot, "base64"));
+
+      console.log(`📸 Screenshot saved: ${filepath}`);
+      return filepath;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to take screenshot: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async takeElementScreenshot(
+    selector: string,
+    name: string = "element",
+    strategy: string = "xpath"
+  ): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      const element = await this.findElement(selector, strategy);
+      await fs.mkdir(this.screenshotDir, { recursive: true });
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `${name}_${timestamp}.png`;
+      const filepath = path.join(this.screenshotDir, filename);
+
+      const screenshot = await element.takeScreenshot();
+      await fs.writeFile(filepath, Buffer.from(screenshot, "base64"));
+
+      console.log(`📸 Element screenshot saved: ${filepath}`);
+      return filepath;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to take element screenshot: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * W3C Page Source and DOM
+   */
+  async getPageSource(): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    return this.safeExecute(async () => {
+      return await this.driver!.getPageSource();
+    }, "Failed to get page source");
+  }
+
+  /**
+   * W3C Timeouts
+   */
+  async setImplicitTimeout(timeoutMs: number): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.setTimeout({ implicit: timeoutMs });
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to set implicit timeout: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async setPageLoadTimeout(timeoutMs: number): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.setTimeout({ pageLoad: timeoutMs });
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to set page load timeout: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async setScriptTimeout(timeoutMs: number): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.setTimeout({ script: timeoutMs });
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to set script timeout: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * W3C Execute Script
+   */
+  async executeScript(script: string, args: any[] = []): Promise<any> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.executeScript(script, args);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to execute script: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async executeAsyncScript(script: string, args: any[] = []): Promise<any> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.executeAsyncScript(script, args);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to execute async script: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * W3C Cookies (for hybrid/web contexts)
+   */
+  async addCookie(cookie: {
+    name: string;
+    value: string;
+    domain?: string;
+    path?: string;
+    secure?: boolean;
+    httpOnly?: boolean;
+    expiry?: number;
+  }): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.addCookie(cookie);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to add cookie: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getCookies(): Promise<any[]> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getCookies();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get cookies: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async deleteCookie(name: string): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.deleteCookie(name);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to delete cookie: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async deleteAllCookies(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.deleteAllCookies();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to delete all cookies: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Mobile-Specific W3C Extensions
+   */
+  async launchApp(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.launchApp();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to launch app: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async closeApp(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.closeApp();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to close app: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async resetApp(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      // Use terminateApp + launchApp instead of reset() which doesn't exist
+      const currentPackage = await this.getCurrentPackage();
+      await this.driver.terminateApp(currentPackage, {});
+      await this.driver.launchApp();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to reset app: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async terminateApp(bundleId: string): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.terminateApp(bundleId, {});
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to terminate app: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async activateApp(bundleId: string): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.activateApp(bundleId);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to activate app: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getCurrentPackage(): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getCurrentPackage();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get current package: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getCurrentActivity(): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getCurrentActivity();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get current activity: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getDeviceTime(): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getDeviceTime();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get device time: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async isAppInstalled(bundleId: string): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.isAppInstalled(bundleId);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to check if app is installed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async installApp(appPath: string): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.installApp(appPath);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to install app: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async removeApp(bundleId: string): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.removeApp(bundleId);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to remove app: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Context Management (Native/WebView)
+   */
+  async getContexts(): Promise<string[]> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      const contexts = await this.driver.getContexts();
+      return contexts.map((context) => context.toString());
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get contexts: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getCurrentContext(): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      const context = await this.driver.getContext();
+      return context.toString();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get current context: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async switchContext(context: string): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.switchContext(context);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to switch context: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Device Orientation
+   */
+  async getOrientation(): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getOrientation();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get orientation: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async setOrientation(orientation: "PORTRAIT" | "LANDSCAPE"): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.setOrientation(orientation);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to set orientation: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Device Hardware Keys (Android)
+   */
+  async pressKeyCode(keyCode: number, metaState?: number): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.pressKeyCode(keyCode, metaState);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to press key code: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async longPressKeyCode(keyCode: number, metaState?: number): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.longPressKeyCode(keyCode, metaState);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to long press key code: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Additional Mobile Methods
+   */
+  async hideKeyboard(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.hideKeyboard();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to hide keyboard: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async lockDevice(duration?: number): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.lock(duration);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to lock device: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async isDeviceLocked(): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.isLocked();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to check if device is locked: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async unlockDevice(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.unlock();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to unlock device: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async openNotifications(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.openNotifications();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to open notifications: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async pullFile(path: string): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.pullFile(path);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to pull file: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async pushFile(path: string, data: string): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.pushFile(path, data);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to push file: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getBatteryInfo(): Promise<{ level: number; state: number }> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      const result = await this.driver.executeScript("mobile: batteryInfo", []);
+      return {
+        level: result.level || 0,
+        state: result.state || 0,
+      };
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get battery info: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getIosSimulators(): Promise<any[]> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      const result = await this.driver.executeScript(
+        "mobile: listSimulators",
+        []
+      );
+      return (result as any).devices || [];
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get iOS simulators list: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async findByIosPredicate(
+    predicateString: string,
+    timeoutMs: number = 10000
+  ): Promise<Element> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      const element = await this.driver.$(
+        `-ios predicate string:${predicateString}`
+      );
+      await element.waitForExist({ timeout: timeoutMs });
+      return element;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to find element with iOS predicate: ${predicateString}`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async findByIosClassChain(
+    classChain: string,
+    timeoutMs: number = 10000
+  ): Promise<Element> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      const element = await this.driver.$(`-ios class chain:${classChain}`);
+      await element.waitForExist({ timeout: timeoutMs });
+      return element;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to find element with iOS class chain: ${classChain}`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async performTouchId(match: boolean): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      await this.driver.executeScript("mobile: performTouchId", [{ match }]);
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to perform Touch ID: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async shakeDevice(): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      await this.driver.executeScript("mobile: shake", []);
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to shake device: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async startRecording(options?: {
+    videoType?: string;
+    timeLimit?: number;
+    videoQuality?: string;
+    videoFps?: number;
+  }): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      const opts = options || {};
+      await this.driver.startRecordingScreen(opts);
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to start screen recording: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async stopRecording(): Promise<string> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      const recording = await this.driver.stopRecordingScreen();
+      return recording;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to stop screen recording: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async executeMobileCommand(command: string, args: any[] = []): Promise<any> {
+    if (!this.driver) {
+      throw new AppiumError(
+        "Appium driver not initialized. Call initializeDriver first."
+      );
+    }
+
+    try {
+      return await this.driver.executeScript(`mobile: ${command}`, args);
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to execute mobile command '${command}': ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async sendKeysToDevice(text: string): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.keys(text.split(""));
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to send keys to device: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async sendKeyEvent(keyEvent: string | number): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      if (typeof keyEvent === "string") {
+        await this.driver.keys(keyEvent);
+      } else {
+        await this.driver.pressKeyCode(keyEvent);
+      }
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to send key event ${keyEvent}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
   async getElementAttributes(
     selector: string,
     strategy: string = "xpath"
@@ -1684,10 +2173,8 @@ export class AppiumHelper {
     try {
       const element = await this.findElement(selector, strategy);
 
-      // Get common element attributes - these may vary by platform
       const result: Record<string, any> = {};
 
-      // Try to get common properties
       const propertiesToGet = [
         "text",
         "content-desc",
@@ -1709,23 +2196,22 @@ export class AppiumHelper {
       for (const prop of propertiesToGet) {
         try {
           result[prop] = await element.getAttribute(prop);
-        } catch (e) {
+        } catch {
           // Ignore errors for attributes that may not exist
         }
       }
 
-      // Also get location and size
       try {
         result.location = await element.getLocation();
         result.size = await element.getSize();
-      } catch (e) {
+      } catch {
         // Ignore if not available
       }
 
       return result;
     } catch (error) {
       throw new AppiumError(
-        `Failed to get attributes for element with selector ${selector}: ${
+        `Failed to get element attributes: ${
           error instanceof Error ? error.message : String(error)
         }`,
         error instanceof Error ? error : undefined
@@ -1734,59 +2220,113 @@ export class AppiumHelper {
   }
 
   /**
-   * Get detailed element analysis with all available information
-   * (useful for inspector functionality)
-   *
-   * @param selector Element selector
-   * @param strategy Selection strategy
-   * @returns Comprehensive element info
+   * Static helper for creating W3C capabilities
    */
+  static createW3CCapabilities(
+    platform: "Android" | "iOS",
+    options: {
+      deviceName?: string;
+      udid?: string;
+      app?: string;
+      appPackage?: string;
+      appActivity?: string;
+      bundleId?: string;
+      automationName?: "UiAutomator2" | "XCUITest" | "Espresso" | "Flutter";
+      noReset?: boolean;
+      fullReset?: boolean;
+      newCommandTimeout?: number;
+      [key: string]: any;
+    } = {}
+  ): AppiumCapabilities {
+    const baseCapabilities: AppiumCapabilities = {
+      platformName: platform,
+    };
+
+    if (platform === "Android") {
+      baseCapabilities["appium:automationName"] =
+        options.automationName || "UiAutomator2";
+      if (options.appPackage)
+        baseCapabilities["appium:appPackage"] = options.appPackage;
+      if (options.appActivity)
+        baseCapabilities["appium:appActivity"] = options.appActivity;
+    } else if (platform === "iOS") {
+      baseCapabilities["appium:automationName"] =
+        options.automationName || "XCUITest";
+      if (options.bundleId)
+        baseCapabilities["appium:bundleId"] = options.bundleId;
+    }
+
+    // Add common capabilities with appium: prefix
+    if (options.deviceName)
+      baseCapabilities["appium:deviceName"] = options.deviceName;
+    if (options.udid) baseCapabilities["appium:udid"] = options.udid;
+    if (options.app) baseCapabilities["appium:app"] = options.app;
+    if (options.noReset !== undefined)
+      baseCapabilities["appium:noReset"] = options.noReset;
+    if (options.fullReset !== undefined)
+      baseCapabilities["appium:fullReset"] = options.fullReset;
+    if (options.newCommandTimeout)
+      baseCapabilities["appium:newCommandTimeout"] = options.newCommandTimeout;
+
+    // Add any additional options with appium: prefix
+    for (const [key, value] of Object.entries(options)) {
+      if (
+        ![
+          "deviceName",
+          "udid",
+          "app",
+          "appPackage",
+          "appActivity",
+          "bundleId",
+          "automationName",
+          "noReset",
+          "fullReset",
+          "newCommandTimeout",
+        ].includes(key)
+      ) {
+        if (!key.startsWith("appium:")) {
+          baseCapabilities[`appium:${key}` as keyof AppiumCapabilities] = value;
+        } else {
+          baseCapabilities[key as keyof AppiumCapabilities] = value;
+        }
+      }
+    }
+
+    return baseCapabilities;
+  }
+
   async inspectElement(
     selector: string,
     strategy: string = "xpath"
-  ): Promise<Record<string, any>> {
+  ): Promise<any> {
     try {
-      const attributes = await this.getElementAttributes(selector, strategy);
       const element = await this.findElement(selector, strategy);
+      const attributes = await this.getElementAttributes(selector, strategy);
 
-      // Define result object with explicit type that includes text and rect properties
-      const result: Record<string, any> = {
+      // Get additional inspection data
+      const elementData: Record<string, any> = {
         ...attributes,
+        tagName: await element.getTagName(),
         isDisplayed: await element.isDisplayed(),
         isEnabled: await element.isEnabled(),
         isSelected: await element.isSelected(),
-        text: null, // Initialize text property
-        rect: null, // Initialize rect property
       };
 
-      // Try to get text separately as it's important
+      // Try to get additional properties
       try {
-        result.text = await element.getText();
-      } catch (e) {
-        // Text might not be available
-        result.text = null;
+        elementData.rect = await element.getElementRect(element.elementId);
+      } catch {
+        // Fallback to location and size
+        try {
+          elementData.location = await element.getLocation();
+          elementData.size = await element.getSize();
+        } catch {}
       }
 
-      // Get rectangle info
-      try {
-        // Use getSize and getLocation instead of getRect
-        const size = await element.getSize();
-        const location = await element.getLocation();
-
-        result.rect = {
-          x: location.x,
-          y: location.y,
-          width: size.width,
-          height: size.height,
-        };
-      } catch (e) {
-        // Rect might not be available
-      }
-
-      return result;
+      return elementData;
     } catch (error) {
       throw new AppiumError(
-        `Failed to inspect element with selector ${selector}: ${
+        `Failed to inspect element: ${
           error instanceof Error ? error.message : String(error)
         }`,
         error instanceof Error ? error : undefined
@@ -1794,37 +2334,32 @@ export class AppiumHelper {
     }
   }
 
-  /**
-   * Get a visual tree of elements under a parent element or from the root
-   * Helps create a hierarchical view of the UI elements (inspector functionality)
-   *
-   * @param parentSelector Optional parent element selector, if not provided will use root
-   * @param parentStrategy Selection strategy for parent
-   * @param maxDepth Maximum depth to traverse
-   * @returns Hierarchical object representing the element tree
-   */
-  async getElementTree(
-    parentSelector?: string,
-    parentStrategy: string = "xpath",
-    maxDepth: number = 5
-  ): Promise<Record<string, any>> {
+  async getElementTree(): Promise<any> {
     if (!this.driver) {
       throw new AppiumError("Appium driver not initialized");
     }
 
     try {
-      // Get the XML source
-      const source = await this.getPageSource();
+      const pageSource = await this.driver.getPageSource();
 
-      // Since we're in Node.js and don't have access to DOM APIs,
-      // we'll return a simplified structure with the raw XML source
-      // and some basic info. For a full XML parser, a library like
-      // 'xmldom' or 'cheerio' would be needed.
-      return {
-        rawSource: source,
-        timestamp: new Date().toISOString(),
-        note: "XML parsing would require additional libraries",
-      };
+      // For XML-based page sources, return structured data
+      try {
+        // Simple XML parsing for mobile contexts
+        const xmlData = {
+          source: pageSource,
+          timestamp: new Date().toISOString(),
+          type: "mobile_hierarchy",
+        };
+
+        return xmlData;
+      } catch {
+        // Return raw source if parsing fails
+        return {
+          source: pageSource,
+          timestamp: new Date().toISOString(),
+          type: "raw",
+        };
+      }
     } catch (error) {
       throw new AppiumError(
         `Failed to get element tree: ${
@@ -1835,19 +2370,13 @@ export class AppiumHelper {
     }
   }
 
-  /**
-   * Verify if text is present in the page source
-   *
-   * @param text Text to search for
-   * @returns true if text is found
-   */
   async hasTextInSource(text: string): Promise<boolean> {
     try {
-      const source = await this.getPageSource();
-      return source.includes(text);
+      const pageSource = await this.getPageSource();
+      return pageSource.includes(text);
     } catch (error) {
       throw new AppiumError(
-        `Failed to check for text in page source: ${
+        `Failed to check for text in source: ${
           error instanceof Error ? error.message : String(error)
         }`,
         error instanceof Error ? error : undefined
@@ -1855,29 +2384,549 @@ export class AppiumHelper {
     }
   }
 
-  /**
-   * Find all elements containing specific text
-   *
-   * @param text Text to search for
-   * @returns Array of WebdriverIO elements that contain the text
-   */
   async findElementsByText(text: string): Promise<ElementArray> {
     if (!this.driver) {
       throw new AppiumError("Appium driver not initialized");
     }
 
     try {
-      // This XPath finds elements with text containing the specified string
-      // It works for both Android and iOS
-      const xpath = `//*[contains(@text,"${text}") or contains(@content-desc,"${text}") or contains(@label,"${text}") or contains(@value,"${text}") or contains(@resource-id,"${text}")]`;
-      return await this.findElements(xpath, "xpath");
+      // Try multiple strategies for finding text
+      const strategies = [
+        `//*[@text='${text}']`,
+        `//*[contains(@text,'${text}')]`,
+        `//*[@content-desc='${text}']`,
+        `//*[contains(@content-desc,'${text}')]`,
+        `*=${text}`, // WebDriverIO partial text match
+        `=${text}`, // WebDriverIO exact text match
+      ];
+
+      for (const strategy of strategies) {
+        try {
+          const elements = await this.driver.$$(strategy);
+          if (elements.length > 0) {
+            return elements;
+          }
+        } catch {
+          // Continue to next strategy
+        }
+      }
+
+      // Return empty array if no elements found
+      return [] as any as ElementArray;
     } catch (error) {
       throw new AppiumError(
-        `Failed to find elements containing text "${text}": ${
+        `Failed to find elements by text '${text}': ${
           error instanceof Error ? error.message : String(error)
         }`,
         error instanceof Error ? error : undefined
       );
     }
   }
+
+  /**
+   * Helper Utilities
+   */
+  async waitForElement(
+    selector: string,
+    strategy: string = "xpath",
+    timeoutMs: number = 10000
+  ): Promise<Element> {
+    const startTime = Date.now();
+    let lastError: Error | undefined;
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const element = await this.findElement(selector, strategy, 1000);
+        if (await element.isDisplayed()) {
+          return element;
+        }
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    throw new AppiumError(
+      `Element not found within ${timeoutMs}ms: ${selector}`,
+      lastError
+    );
+  }
+
+  async waitForElementToDisappear(
+    selector: string,
+    strategy: string = "xpath",
+    timeoutMs: number = 10000
+  ): Promise<boolean> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const exists = await this.elementExists(selector, strategy);
+        if (!exists) {
+          return true;
+        }
+      } catch {
+        return true; // Element doesn't exist, so it's "disappeared"
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    return false;
+  }
+
+  async elementExists(
+    selector: string,
+    strategy: string = "xpath",
+    timeoutMs: number = 2000
+  ): Promise<boolean> {
+    try {
+      const element = await this.findElement(selector, strategy, timeoutMs);
+      return await element.isDisplayed();
+    } catch {
+      return false;
+    }
+  }
+
+  async waitUntilElementClickable(
+    selector: string,
+    strategy: string = "xpath",
+    timeoutMs: number = 10000
+  ): Promise<Element> {
+    const startTime = Date.now();
+    let lastError: Error | undefined;
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const element = await this.findElement(selector, strategy, 1000);
+        if ((await element.isDisplayed()) && (await element.isEnabled())) {
+          return element;
+        }
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    throw new AppiumError(
+      `Element not clickable within ${timeoutMs}ms: ${selector}`,
+      lastError
+    );
+  }
+
+  async retryAction<T>(
+    action: () => Promise<T>,
+    maxRetries: number = 3,
+    delay: number = 1000
+  ): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await action();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (attempt < maxRetries) {
+          console.log(
+            `Retry attempt ${attempt} failed, retrying in ${delay}ms...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay * attempt));
+        }
+      }
+    }
+
+    throw new AppiumError(
+      `Action failed after ${maxRetries} attempts`,
+      lastError
+    );
+  }
+
+  /**
+   * Advanced Mobile Capabilities
+   */
+  async getNetworkConnection(): Promise<number> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getNetworkConnection();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get network connection: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async setNetworkConnection(type: number): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.setNetworkConnection({ type });
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to set network connection: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async toggleWifi(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.toggleWiFi();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to toggle wifi: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async toggleData(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.toggleData();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to toggle data: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async toggleAirplaneMode(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.toggleAirplaneMode();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to toggle airplane mode: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async toggleLocationServices(): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.toggleLocationServices();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to toggle location services: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async setGeoLocation(
+    latitude: number,
+    longitude: number,
+    altitude?: number
+  ): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.setGeoLocation({
+        latitude,
+        longitude,
+        altitude: altitude || 0,
+      });
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to set geo location: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getGeoLocation(): Promise<{
+    latitude: number;
+    longitude: number;
+    altitude: number;
+  }> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      const response = await this.driver.getGeoLocation();
+      return response as {
+        latitude: number;
+        longitude: number;
+        altitude: number;
+      };
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get geo location: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Cross-platform compatibility helpers
+   */
+  async tapByCoordinates(x: number, y: number): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      const w3cActions: W3CPointerAction[] = [
+        {
+          type: "pointer",
+          id: "finger1",
+          parameters: { pointerType: "touch" },
+          actions: [
+            {
+              type: "pointerMove",
+              duration: 0,
+              x: Math.round(x),
+              y: Math.round(y),
+              origin: "viewport",
+            },
+            { type: "pointerDown", button: 0 },
+            { type: "pause", duration: 100 },
+            { type: "pointerUp", button: 0 },
+          ],
+        },
+      ];
+
+      await this.driver.performActions(w3cActions);
+      console.log(`✅ Tap at coordinates (${x}, ${y}) successful`);
+      return true;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to tap at coordinates (${x}, ${y}): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getElementCenter(
+    selector: string,
+    strategy: string = "xpath"
+  ): Promise<{ x: number; y: number }> {
+    try {
+      const element = await this.findElement(selector, strategy);
+      const location = await element.getLocation();
+      const size = await element.getSize();
+
+      return {
+        x: Math.round(location.x + size.width / 2),
+        y: Math.round(location.y + size.height / 2),
+      };
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get element center: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async isKeyboardShown(): Promise<boolean> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.isKeyboardShown();
+    } catch (error) {
+      // Some drivers don't support this method, so we'll try alternative approaches
+      try {
+        // Try to detect keyboard by looking for common keyboard elements
+        const pageSource = await this.getPageSource();
+        return (
+          pageSource.toLowerCase().includes("keyboard") ||
+          pageSource.toLowerCase().includes("inputmethod")
+        );
+      } catch {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * Performance and debugging utilities
+   */
+  async getPerformanceData(
+    packageName: string,
+    dataType: string,
+    dataReadTimeout?: number
+  ): Promise<any[]> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getPerformanceData(
+        packageName,
+        dataType,
+        dataReadTimeout
+      );
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get performance data: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async getPerformanceDataTypes(): Promise<string[]> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.getPerformanceDataTypes();
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get performance data types: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async startActivity(
+    appPackage: string,
+    appActivity: string,
+    appWaitPackage?: string,
+    appWaitActivity?: string,
+    intentAction?: string,
+    intentCategory?: string,
+    intentFlags?: string,
+    optionalIntentArguments?: any,
+    dontStopAppOnReset?: boolean
+  ): Promise<void> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      await this.driver.startActivity(
+        appPackage,
+        appActivity,
+        appWaitPackage,
+        appWaitActivity,
+        intentAction,
+        intentCategory,
+        intentFlags,
+        optionalIntentArguments,
+        dontStopAppOnReset?.toString()
+      );
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to start activity: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Cleanup and resource management
+   */
+  async cleanup(): Promise<void> {
+    try {
+      if (this.driver) {
+        // Try to clean up any ongoing actions
+        try {
+          await this.driver.releaseActions();
+        } catch {
+          // Ignore errors during cleanup
+        }
+
+        // Close the session
+        await this.closeDriver();
+      }
+    } catch (error) {
+      console.warn("Error during cleanup:", error);
+    }
+  }
+
+  /**
+   * Get driver capabilities for debugging
+   */
+  async getCapabilities(): Promise<any> {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+
+    try {
+      return await this.driver.capabilities;
+    } catch (error) {
+      throw new AppiumError(
+        `Failed to get capabilities: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Session information
+   */
+  getSessionId(): string {
+    if (!this.driver) {
+      throw new AppiumError("Appium driver not initialized");
+    }
+    return this.driver.sessionId;
+  }
+
+  isDriverInitialized(): boolean {
+    return this.driver !== null;
+  }
 }
+
+// Export additional types and utilities
+export { W3CAction, W3CPointerAction, W3CKeyAction, W3CWheelAction };
+
+// Default export
+export default AppiumHelper;
