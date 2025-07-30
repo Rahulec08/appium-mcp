@@ -1,10 +1,10 @@
 ![Build](https://github.com/Rahulec08/appium-mcp/actions/workflows/ci.yml/badge.svg)
-[![NPM Version](https://img.shields.io/npm/v/appium-mcp.svg)](https://www.npmjs.com/package/appium-mcp)
+[![NPM Version](https://img.shields.io/npm/v/mcp-appium-visual.svg)](https://www.npmjs.com/package/mcp-appium-visual)
 [![License](https://img.shields.io/github/license/Rahulec08/appium-mcp.svg)](LICENSE)
 [![Issues](https://img.shields.io/github/issues/Rahulec08/appium-mcp.svg)](https://github.com/Rahulec08/appium-mcp/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/Rahulec08/appium-mcp.svg)](https://github.com/Rahulec08/appium-mcp/commits/main)
 
-`appium-mcp` is an AI-powered mobile automation platform with Model Context Protocol (MCP) integration. It enables seamless control of Android and iOS devices through Appium, featuring intelligent visual element detection and recovery.
+`mcp-appium-visual` is an AI-powered mobile automation platform with Model Context Protocol (MCP) integration. It enables seamless control of Android and iOS devices through Appium, featuring intelligent visual element detection and recovery.
 
 ## Features
 
